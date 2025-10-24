@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Notificaciones - FitConnect</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { display: flex; min-height: 100vh; background: #f4f6fc; font-family: 'Inter', sans-serif; margin: 0; }
+    .sidebar { width: 220px; background: linear-gradient(to bottom, #667eea, #764ba2); padding: 2rem 1rem; color: white; min-height: 100vh;}
+    .sidebar h2 { margin-bottom: 2rem; text-align: center; font-size: 1.5rem; }
+    .sidebar a { display: block; color: white; text-decoration: none; margin: 1rem 0; padding: 0.75rem 1rem; border-radius: 12px; transition: background 0.3s;}
+    .sidebar a:hover { background: rgba(255,255,255,0.2); }
+    .main { flex: 1; padding: 2rem; overflow-y: auto; }
+    h1 { font-size: 2rem; margin-bottom: 2rem;}
+    .noti-list { max-width: 600px; margin: 0 auto; }
+    .noti { background: white; border-radius: 16px; margin-bottom: 1.5rem; padding: 1rem 1.5rem; box-shadow: 0 2px 10px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 1rem; }
+    .noti.nueva { border-left: 5px solid #667eea; background: #eef1fd; }
+    .noti-icon { font-size: 1.8rem; width: 2.5rem; text-align: center;}
+    .noti-contenido { flex: 1;}
+    .noti-contenido strong { display: block; }
+    .noti-fecha { color: #888; font-size: 0.9rem;}
+    .noti-acciones button { background: #667eea; color: white; border: none; border-radius: 8px; padding: 0.3rem 1rem; margin-left: 0.5rem; cursor: pointer;}
+    .noti-acciones button.rechazar { background: #e74c3c; }
+    .vacio { text-align: center; color: #999; margin-top: 4rem;}
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Mi Panel</h2>
+    <a href="/usuarios">Dashboard</a>
+    <a href="/notificaciones"><b>🔔 Notificaciones</b></a>
+    <a href="/mi-entreno">Mis Entrenos</a>
+    <a href="/mis-dietas">Mis Dietas</a>
+    <a href="/formulario-entreno">Crear Plan</a>
+    <a href="/registrar-progreso">Registrar Progreso</a>
+    <a href="/ajustes">Ajustes</a>
+    <a href="/gimnasios">Gimnasios que sigo</a>
+  </div>
+  <div class="main">
+    <h1>Notificaciones</h1>
+    <div class="noti-list">
+      {% if notificaciones %}
+        {% for n in notificaciones %}
+          <div class="noti{% if not n.leida %} nueva{% endif %}">
+            <div class="noti-icon">
+              {% if n.tipo == "amistad" %}
+                🤝
+              {% elif n.tipo == "rutina" %}
+                🏋️
+              {% elif n.tipo == "dieta" %}
+                🥗
+              {% elif n.tipo == "mensaje" %}
+                💬
+              {% else %}
+                🔔
+              {% endif %}
+            </div>
+            <div class="noti-contenido">
+              <strong>{{ n.contenido }}</strong>
+              <span class="noti-fecha">{{ n.fecha.strftime("%d/%m/%Y %H:%M") }}</span>
+            </div>
+            <div class="noti-acciones">
+              {% if n.tipo == "amistad" and n.datos_extra and n.datos_extra.solicitud_id %}
+                <button class="aceptar-noti" data-id="{{ n.datos_extra.solicitud_id }}">Aceptar</button>
+                <button class="rechazar-noti" data-id="{{ n.datos_extra.solicitud_id }}">Rechazar</button>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="vacio">No tienes notificaciones.</div>
+      {% endif %}
+    </div>
+  </div>
+  <script>
+    // AJAX para aceptar/rechazar solicitud de amistad desde la notificación
+    document.querySelectorAll(".aceptar-noti").forEach(btn => {
+      btn.addEventListener("click", async function() {
+        btn.disabled = true;
+        btn.textContent = "Aceptando...";
+        const res = await fetch("/amistades/aceptar-ajax", {
+          method: "POST",
+          headers: {"X-Requested-With": "XMLHttpRequest"},
+          body: new URLSearchParams({ solicitud_id: btn.dataset.id })
+        });
+        const data = await res.json();
+        if (data.status === "ok") {
+          btn.closest(".noti").querySelector(".noti-contenido strong").textContent = "¡Ahora sois amigos!";
+          btn.closest(".noti-acciones").innerHTML = "";
+        } else {
+          btn.disabled = false;
+          btn.textContent = "Aceptar";
+          alert(data.msg || "Error inesperado.");
+        }
+      });
+    });
+    document.querySelectorAll(".rechazar-noti").forEach(btn => {
+      btn.addEventListener("click", async function() {
+        btn.disabled = true;
+        btn.textContent = "Rechazando...";
+        const res = await fetch("/amistades/cancelar-ajax", {
+          method: "POST",
+          headers: {"X-Requested-With": "XMLHttpRequest"},
+          body: new URLSearchParams({ amigo_id: btn.dataset.id }) // Ajusta si usas otro campo
+        });
+        const data = await res.json();
+        if (data.status === "ok") {
+          btn.closest(".noti").remove();
+        } else {
+          btn.disabled = false;
+          btn.textContent = "Rechazar";
+          alert(data.msg || "Error inesperado.");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

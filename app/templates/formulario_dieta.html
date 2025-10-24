@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Formulario de Dieta</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f4f6fc;
+      padding: 2rem;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: #333;
+    }
+    .alert {
+      background: #fde8e8;
+      color: #9b1c1c;
+      border: 1px solid #f8b4b4;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      margin-bottom: 1rem;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      font-weight: normal;
+    }
+    input[type="checkbox"] {
+      width: auto;
+      margin-right: 0.5rem;
+    }
+    button {
+      display: block;
+      width: 100%;
+      background-color: #667eea;
+      color: white;
+      padding: 1rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 2rem;
+    }
+    button:hover {
+      background-color: #5a67d8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Formulario de Dieta Personalizada</h2>
+
+    {# Normaliza 'datos' para evitar errores cuando no exista #}
+    {% set d = datos | default({}, true) %}
+    {% set d_obj = d.objetivos | default([], true) %}
+    {% set d_pref = d.preferencias_alimentarias | default([], true) %}
+
+    {# Bloque de errores de validación (opcional) #}
+    {% if errores %}
+      <div class="alert">
+        <strong>Revisa estos campos:</strong>
+        <ul style="margin: .5rem 0 0 1rem;">
+          {% for err in errores %}
+            <li>
+              {{ (err['loc'] | join('.')) if err['loc'] else '' }} → {{ err['msg'] }}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <form method="post" action="/formulario-dieta">
+      <label for="altura">Altura (cm)</label>
+      <input type="number" name="altura" id="altura" value="{{ d.altura | default('', true) }}" required>
+
+      <label for="edad">Edad</label>
+      <input type="number" name="edad" id="edad" value="{{ d.edad | default('', true) }}" required>
+
+      <label for="sexo">Sexo</label>
+      <select name="sexo" id="sexo" required>
+        {% set sexo_val = d.sexo | default('', true) %}
+        <option value="" {{ 'selected' if not sexo_val else '' }}>Selecciona</option>
+        <option value="hombre" {{ 'selected' if sexo_val == 'hombre' else '' }}>Hombre</option>
+        <option value="mujer" {{ 'selected' if sexo_val == 'mujer' else '' }}>Mujer</option>
+        <option value="otro" {{ 'selected' if sexo_val == 'otro' else '' }}>Otro</option>
+      </select>
+
+      <label>Objetivos</label>
+      <div class="checkbox-group">
+        {% set objetivos_lista = ['perder_peso', 'ganar_masa', 'mantenerme', 'mejorar_salud'] %}
+        {% for objetivo in objetivos_lista %}
+          <label>
+            <input
+              type="checkbox"
+              name="objetivos"
+              value="{{ objetivo }}"
+              {{ 'checked' if objetivo in d_obj else '' }}>
+            {{ objetivo.replace('_', ' ').capitalize() }}
+          </label>
+        {% endfor %}
+      </div>
+
+      <label for="tipo_dieta">Tipo de dieta deseada</label>
+      <input type="text" name="tipo_dieta" id="tipo_dieta" value="{{ d.tipo_dieta | default('', true) }}">
+
+      <label for="alergias">Alergias alimentarias</label>
+      <input type="text" name="alergias" id="alergias" value="{{ d.alergias | default('', true) }}">
+
+      <label for="alimentos_no_deseados">Alimentos que no deseas incluir</label>
+      <input type="text" name="alimentos_no_deseados" id="alimentos_no_deseados" value="{{ d.alimentos_no_deseados | default('', true) }}">
+
+      <label for="tiempo_comidas">¿En qué momento prefieres comer?</label>
+      <input type="text" name="tiempo_comidas" id="tiempo_comidas" value="{{ d.tiempo_comidas | default('', true) }}">
+
+      <label for="comidas_al_dia">¿Cuántas comidas al día prefieres?</label>
+      <input type="number" name="comidas_al_dia" id="comidas_al_dia" value="{{ d.comidas_al_dia | default(3, true) }}" min="1" max="10" required>
+
+      <label for="calorias_objetivo">Calorías objetivo</label>
+      <input type="number" name="calorias_objetivo" id="calorias_objetivo" min="800" max="6000" value="{{ d.calorias_objetivo | default(2000, true) }}" required>
+
+      <fieldset>
+        <legend>Preferencias alimentarias</legend>
+        <label><input type="checkbox" name="preferencias_alimentarias" value="vegano" {{ 'checked' if 'vegano' in d_pref else '' }}> Vegano</label>
+        <label><input type="checkbox" name="preferencias_alimentarias" value="vegetariano" {{ 'checked' if 'vegetariano' in d_pref else '' }}> Vegetariano</label>
+        <label><input type="checkbox" name="preferencias_alimentarias" value="sin_gluten" {{ 'checked' if 'sin_gluten' in d_pref else '' }}> Sin gluten</label>
+      </fieldset>
+
+      <label for="semanas">Duración de la dieta (semanas)</label>
+      <input type="number" name="semanas" id="semanas" min="1" max="52" value="{{ d.semanas | default(d.semanas | default(12, true), true) }}" required>
+
+      <button type="submit">Enviar formulario</button>
+    </form>
+  </div>
+</body>
+</html>

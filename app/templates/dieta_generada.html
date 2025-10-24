@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% extends "base.html" %}
+{% block content %}
+  <h2>Tu dieta personalizada</h2>
+  <p><b>Duración:</b> {{ dieta.duracion }}</p>
+  {% for semana in dieta.plan %}
+    <h3>Semana {{ semana.semana }}</h3>
+    {% for dia in semana.dias %}
+      <h4>{{ dia.dia }}</h4>
+      <ul>
+      {% for comida in dia.comidas %}
+        <li>
+          <b>{{ comida.tipo }}</b>:
+          <ul>
+            {% for item in comida.menu %}
+              <li>{{ item.alimento }}: {{ item.cantidad }}</li>
+            {% endfor %}
+          </ul>
+        </li>
+      {% endfor %}
+      </ul>
+    {% endfor %}
+  {% endfor %}
+  <hr>
+  <b>Consejos generales:</b> {{ dieta.consejos_generales }}
+  <br>
+  <b>Advertencias:</b> {{ dieta.advertencias }}
+{% endblock %}
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Rutina Generada</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .container { max-width: 900px; margin: 30px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #0001; padding: 32px; }
+        .semana { margin-bottom: 30px; }
+        .semana h2 { background: #363e66; color: #fff; padding: 10px 20px; border-radius: 10px 10px 0 0; }
+        .dia { background: #fafaff; margin-bottom: 20px; border-radius: 8px; padding: 20px; box-shadow: 0 1px 4px #0001; }
+        .dia h3 { margin-top: 0; color: #363e66; }
+        .ejercicio { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 18px; border-bottom: 1px solid #eee; padding-bottom: 16px;}
+        .ejercicio:last-child { border-bottom: none; }
+        .ejercicio img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+        .ejercicio-info { flex: 1; }
+        .boton-alternativa { background: #363e66; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; margin-top: 7px;}
+        .consejo, .advertencias, .consejos-generales { background: #e9f1fc; border-radius: 8px; padding: 12px 18px; margin-top: 10px; color: #222e;}
+        .consejos-generales { background: #f8f3d6; }
+        .advertencias { background: #f9e0e0; color: #ae1a1a; }
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 20; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background: #0008; }
+        .modal-content { background: #fff; margin: 12% auto; padding: 32px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 2px 12px #0003;}
+        .close { color: #aaa; float: right; font-size: 24px; font-weight: bold; cursor: pointer;}
+        .alternativa-opcion { background: #e9f1fc; border: 1px solid #ddd; border-radius: 8px; padding: 14px; margin: 8px 0; cursor: pointer; }
+        .alternativa-opcion:hover { background: #c3e1fc; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Rutina Generada</h1>
+    <p><b>Duración:</b> {{ rutina.duracion }}</p>
+
+    {% for semana in rutina.plan %}
+        <div class="semana">
+            <h2>Semana {{ semana.semana }}</h2>
+            {% for dia in semana.dias %}
+                <div class="dia">
+                    <h3>{{ dia.dia }} &mdash; {{ dia.tipo_entrenamiento }}</h3>
+                    <div>
+                        {% for ejercicio in dia.ejercicios %}
+                            <div class="ejercicio">
+                                <img src="{{ ejercicio.imagen_url }}" alt="Imagen de {{ ejercicio.nombre }}">
+                                <div class="ejercicio-info">
+                                    <b>{{ ejercicio.nombre }}</b><br>
+                                    <small>Series: {{ ejercicio.series }} | Repeticiones: {{ ejercicio.repeticiones }}</small><br>
+                                    <span>{{ ejercicio.motivo }}</span>
+                                    <br>
+                                    <button class="boton-alternativa"
+                                            onclick="sugerirAlternativa('{{ ejercicio.nombre }}', '{{ dia.dia }}', {{ semana.semana }}, this)">
+                                        ¿No te convence? Ver alternativas
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="consejo">
+                        <b>Consejo del día:</b> {{ dia.consejo }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+
+    <div class="consejos-generales">
+        <b>Consejos generales:</b> {{ rutina.consejos_generales }}
+    </div>
+    <div class="advertencias">
+        <b>Advertencias:</b> {{ rutina.advertencias }}
+    </div>
+</div>
+
+<!-- Modal para alternativas -->
+<div id="modalAlternativas" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="cerrarModal()">&times;</span>
+        <h2>Alternativas de ejercicio</h2>
+        <div id="alternativasList"></div>
+    </div>
+</div>
+
+<script>
+    function sugerirAlternativa(nombreEjercicio, dia, semana, boton) {
+        // Opcional: puedes poner loading aquí
+        fetch('/alternativas_ejercicio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // Añade CSRF token si tu backend lo requiere
+            },
+            body: JSON.stringify({
+                ejercicio: nombreEjercicio,
+                dia: dia,
+                semana: semana
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            mostrarAlternativas(data.alternativas, nombreEjercicio, boton);
+        })
+        .catch(err => {
+            alert('Error al pedir alternativas.');
+        });
+    }
+
+    function mostrarAlternativas(alternativas, ejercicioOriginal, boton) {
+        let list = document.getElementById('alternativasList');
+        list.innerHTML = '';
+        alternativas.forEach(alternativa => {
+            let div = document.createElement('div');
+            div.className = 'alternativa-opcion';
+            div.innerHTML = `<b>${alternativa.nombre}</b><br>${alternativa.descripcion || ""}`;
+            div.onclick = function() {
+                // Sustituir en la vista (solo visual; para hacerlo persistente, debes llamar a un endpoint)
+                boton.parentElement.querySelector('b').textContent = alternativa.nombre;
+                if (alternativa.imagen_url) {
+                    boton.parentElement.parentElement.querySelector('img').src = alternativa.imagen_url;
+                }
+                cerrarModal();
+                // Aquí puedes añadir una llamada para actualizarlo en backend
+            };
+            list.appendChild(div);
+        });
+        document.getElementById('modalAlternativas').style.display = 'block';
+    }
+    function cerrarModal() {
+        document.getElementById('modalAlternativas').style.display = 'none';
+    }
+    // Cerrar modal al hacer clic fuera
+    window.onclick = function(event) {
+        var modal = document.getElementById('modalAlternativas');
+        if (event.target == modal) {
+            cerrarModal();
+        }
+    }
+</script>
+</body>
+</html>
+

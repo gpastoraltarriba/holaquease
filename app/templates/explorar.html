@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Explorar comunidad</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f0f4f8; }
+    h1 { margin-bottom: 1rem; }
+    nav { display: flex; gap: 1rem; margin-bottom: 2rem; }
+    a { text-decoration: none; padding: 0.5rem 1rem; background: #4f46e5; color: white; border-radius: 8px; }
+    a:hover { background: #4338ca; }
+
+    .seccion { margin-bottom: 2rem; }
+    .card {
+      background: white; padding: 1rem; border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05); margin-bottom: 1rem;
+    }
+    form { margin-top: 0.5rem; }
+    button {
+      background: #16a34a; color: white; border: none;
+      padding: 0.5rem 1rem; border-radius: 8px;
+    }
+    button:hover { background: #15803d; }
+  </style>
+</head>
+<body>
+  <h1>Explorar comunidad</h1>
+  <nav>
+    <a href="/explorar?seccion=gimnasios">Gimnasios</a>
+    <a href="/explorar?seccion=profesionales">Profesionales</a>
+    <a href="/explorar?seccion=amigos">Amigos</a>
+  </nav>
+
+  <div class="seccion">
+    {% if seccion == "gimnasios" %}
+      <h2>Gimnasios disponibles</h2>
+      {% for gimnasio in resultados %}
+        <div class="card">
+          <strong>{{ gimnasio.nombre }}</strong><br>
+          {{ gimnasio.ubicacion or "Ubicación no especificada" }}
+          <form method="post" action="/unirse-gimnasio">
+            <input type="hidden" name="gimnasio_id" value="{{ gimnasio.id }}">
+            <button type="submit">Unirme</button>
+          </form>
+        </div>
+      {% else %}
+        <p>No hay gimnasios disponibles.</p>
+      {% endfor %}
+
+    {% elif seccion == "profesionales" %}
+      <h2>Entrenadores y Dietistas</h2>
+      {% for p in resultados %}
+        <div class="card">
+          <strong>{{ p.nombre }}</strong> ({{ p.rol }})<br>
+          {{ p.email }}
+          <form method="post" action="/profesionales/unirse">
+            <input type="hidden" name="profesional_id" value="{{ p.id }}">
+            <input type="hidden" name="tipo" value="{{ p.rol }}">
+            <button type="submit">Unirme</button>
+          </form>
+        </div>
+      {% else %}
+        <p>No hay profesionales disponibles.</p>
+      {% endfor %}
+
+    {% elif seccion == "amigos" %}
+      <h2>Buscar amigos</h2>
+      <form method="get" action="/explorar">
+        <input type="hidden" name="seccion" value="amigos">
+        <input type="text" name="q" placeholder="Buscar por nombre o email">
+        <button type="submit">Buscar</button>
+      </form>
+      {% for amigo in resultados %}
+        <div class="card">
+          <strong>{{ amigo.nombre }}</strong> <br> {{ amigo.email }}
+          <form method="post" action="/amigos/agregar">
+            <input type="hidden" name="amigo_id" value="{{ amigo.id }}">
+            <button type="submit">Agregar amigo</button>
+          </form>
+        </div>
+      {% else %}
+        <p>No se encontraron usuarios.</p>
+      {% endfor %}
+    {% endif %}
+  </div>
+</body>
+</html>

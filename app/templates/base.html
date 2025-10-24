@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Mi App Fitness{% endblock %}</title>
+
+  <!-- Fuente y estilos -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/estilos.css') }}" />
+
+  <style>
+    /* Reset */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { display: flex; min-height: 100vh; background: #f4f6fc; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 230px;
+      background: linear-gradient(to bottom, #667eea, #764ba2);
+      padding: 2rem 1rem;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .sidebar h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      color: #fff;
+      text-decoration: none;
+      padding: .6rem .9rem;
+      border-radius: 12px;
+      transition: background .2s ease;
+    }
+    .sidebar-item:hover { background: rgba(255,255,255,.18); }
+
+    /* Contenedor inferior (avatar + nombre) */
+    .sidebar-bottom {
+      margin-top: 2rem;
+      border-top: 1px solid rgba(255,255,255,.2);
+      padding-top: 1rem;
+    }
+
+    /* Link de perfil */
+    .sidebar-profile-link {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      text-decoration: none;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      transition: background 0.2s ease;
+    }
+    .sidebar-profile-link:hover { background: rgba(255, 255, 255, 0.15); }
+
+    /* Avatar del perfil */
+    .sidebar-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.6);
+      display: block;
+    }
+
+    /* Texto del nombre (centrado verticalmente con el avatar) */
+    .sidebar-label {
+      display: flex;
+      align-items: center;
+      height: 38px;
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    /* MAIN */
+    .main {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <h2>Mi Fitness</h2>
+
+    <a href="/usuarios" class="sidebar-item">🏠 Dashboard</a>
+    <a href="/mis-entrenos" class="sidebar-item">💪 Mis Entrenos</a>
+    <a href="/mis-dietas" class="sidebar-item">🥗 Mis Dietas</a>
+    <a href="/crear-plan" class="sidebar-item">🧾 Crear Plan</a>
+    <a href="/registrar-progreso" class="sidebar-item">📈 Registrar Progreso</a>
+    <a href="/ajustes" class="sidebar-item">⚙️ Ajustes</a>
+    <a href="/gimnasios" class="sidebar-item">🏋️ Gimnasios que sigo</a>
+    <a href="/buscar" class="sidebar-item">🔍 Buscar</a>
+    <a href="/notificaciones" class="sidebar-item">🔔 Notificaciones</a>
+
+    <!-- PERFIL (siempre abajo del todo) -->
+    <div class="sidebar-bottom">
+      {% set default_avatar_rel = DEFAULT_AVATAR_REL|default('uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png', true) %}
+      {% set default_avatar_url = request.url_for('static', path=default_avatar_rel) %}
+
+      <a href="/mi-perfil" class="sidebar-item sidebar-profile-link">
+        <img
+          class="sidebar-avatar"
+          src="{{ request.url_for('static', path=(usuario.imagen_url if usuario is defined and usuario and usuario.imagen_url else default_avatar_rel)) }}"
+          alt="Avatar de {{ (usuario.nombre if usuario is defined and usuario and usuario.nombre else 'usuario') }}"
+          onerror="this.onerror=null; this.src='{{ default_avatar_url }}'">
+        <span class="sidebar-label">
+          {{ (usuario.nombre if usuario is defined and usuario and usuario.nombre else 'Mi Perfil') }}
+        </span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL (heredado) -->
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
+

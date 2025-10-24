@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis Dietas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 800px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .dieta {
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .dieta h3 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      color: #667eea;
+    }
+
+    .no-plan {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .no-plan a {
+      background-color: #667eea;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .no-plan a:hover {
+      background-color: #5a67d8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Mis Dietas</h2>
+
+    {% if dietas %}
+      {% for dieta in dietas %}
+        <div class="dieta">
+          <h3>{{ dieta.nombre }}</h3>
+          <p><strong>Calorías totales:</strong> {{ dieta.calorias_totales }}</p>
+          <p>{{ dieta.descripcion }}</p>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="no-plan">
+        <p>No tienes ninguna dieta activa.</p>
+        <a href="/formulario-dieta">Crear plan de dieta</a>
+      </div>
+    {% endif %}
+  </div>
+
+</body>
+</html>

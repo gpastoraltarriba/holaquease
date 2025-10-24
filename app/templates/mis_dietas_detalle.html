@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% extends "base.html" %}
+{% block title %}Detalle Dieta{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom:.25rem;">🥗 {{ dieta.nombre or ('Dieta #' ~ dieta.id) }}</h1>
+<div class="small" style="margin-bottom:1rem;">
+  Semanas: {{ plan.semanas|default('—', true) }}
+</div>
+
+<div class="chart-grid">
+  {% for dia in DAY_ORDER %}
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>{{ dia }}</h3>
+      </div>
+      <div class="chart-body" style="height:auto;">
+        {% set comidas = plan.dias.get(dia) or [] %}
+        {% if comidas|length == 0 %}
+          <div class="no-data" style="padding:1rem;">Sin comidas registradas</div>
+        {% else %}
+          <div style="display:flex; flex-direction:column; gap:.6rem; padding:.25rem .25rem 1rem;">
+            {% for c in comidas %}
+              <div style="border:1px solid #e9ecf5; border-radius:12px; padding:.7rem .8rem;">
+                <div style="display:flex; justify-content:space-between; gap:.75rem;">
+                  <strong>{{ c.momento or c.comida or 'Comida' }}</strong>
+                  <span class="small" style="color:#666;">
+                    {{ c.kcal|default('—', true) }} kcal
+                  </span>
+                </div>
+                <div style="color:#333; margin-top:.35rem;">
+                  {{ c.plato or c.nombre or '—' }}
+                </div>
+                {% if c.macros %}
+                  <div class="small" style="margin-top:.4rem; color:#555;">
+                    {% set m = c.macros %}
+                    Prote: {{ m.proteinas or m.prot or '—' }} |
+                    Carbs: {{ m.carbohidratos or m.carbs or '—' }} |
+                    Grasas: {{ m.grasas or '—' }}
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sin dietas</title>
+  {% extends "base.html" %}
+{% block title %}Mis dietas{% endblock %}
+
+{% block content %}
+<style>
+  .empty-wrap{ max-width:820px; margin:2rem auto; }
+  .empty-card{
+    background:#fff; border-radius:20px; padding:2rem;
+    box-shadow:0 12px 30px rgba(0,0,0,.08);
+    text-align:center;
+  }
+  .empty-title{ font-size:1.35rem; font-weight:700; color:#222; margin-bottom:.5rem; }
+  .empty-sub{ color:#666; margin-bottom:1rem; }
+  .empty-cta{ display:flex; gap:.75rem; justify-content:center; margin-top:1rem; flex-wrap:wrap; }
+  .btn{ padding:.6rem .9rem; border-radius:12px; border:1px solid #d9deea; background:#f6f7fb; text-decoration:none; color:#1f2430; }
+  .btn.primary{ background:#667eea; border-color:#667eea; color:#fff; }
+</style>
+<body>
+<div class="empty-wrap">
+  <div class="empty-card">
+    <div class="empty-title">Aún no tienes dietas</div>
+    <div class="empty-sub">
+      Cuando generes tu primera dieta, aparecerá aquí para que la sigas día a día.
+    </div>
+    <div class="empty-cta">
+      <a href="/formulario-dieta" class="btn primary">➕ Crear mi dieta</a>
+      <a href="/seleccion-plan" class="btn">Elegir tipo de plan</a>
+      <a href="/usuarios" class="btn">🏠 Volver al dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+</body>
+</html>

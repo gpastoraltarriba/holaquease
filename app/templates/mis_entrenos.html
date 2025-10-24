@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detalle Entreno — {{ dia_sel }} (Semana {{ semana_sel }})</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',sans-serif}
+    body{background:#f4f6fc;min-height:100vh}
+    .sidebar{width:220px;background:linear-gradient(to bottom,#667eea,#764ba2);padding:2rem 1rem;color:#fff;min-height:100vh;position:fixed;left:0;top:0}
+    .sidebar h2{margin-bottom:2rem;text-align:center;font-size:1.5rem}
+    .sidebar a{display:block;color:#fff;text-decoration:none;margin:1rem 0;padding:.75rem 1rem;border-radius:12px;transition:background .3s}
+    .sidebar a:hover,.sidebar a.active{background:rgba(255,255,255,.2);font-weight:600}
+    .main{margin-left:240px;padding:2rem;max-width:1100px}
+    .header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem}
+    .header h1{font-size:1.6rem}
+    .badges{display:flex;gap:.5rem;align-items:center}
+    .badge{background:#eef1fd;color:#445;border:1px solid #dfe4ff;padding:.3rem .6rem;border-radius:10px;font-size:.9rem}
+    .controls{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+    .btn{border:none;border-radius:10px;padding:.55rem .9rem;cursor:pointer}
+    .btn-primary{background:#667eea;color:#fff}
+    .btn-danger{background:#e74c3c;color:#fff}
+    .btn-ghost{background:#fff;color:#333;border:1px solid #ddd}
+    .timer{font-weight:700;color:#333}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-top:1rem}
+    .card{background:#fff;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:1rem}
+    .card h3{font-size:1.05rem;margin:.2rem 0 .4rem;color:#333}
+    .thumb{width:100%;height:180px;background:#eee;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+    .thumb img{width:100%;height:100%;object-fit:cover}
+    .small{font-size:.9rem;color:#666}
+    .row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+    .muted{color:#888}
+    .pill{background:#f7f8ff;border:1px solid #e2e7ff;padding:.2rem .5rem;border-radius:999px;font-size:.8rem}
+    .sets{margin-top:.6rem;border-top:1px dashed #e5e7eb;padding-top:.6rem}
+    .set-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.4rem;align-items:center;margin:.35rem 0}
+    .set-row input{width:100%;padding:.35rem .45rem;border:1px solid #ddd;border-radius:8px}
+    .mono{font-variant-numeric:tabular-nums}
+    .divider{height:1px;background:#eee;margin:1rem 0}
+    .footer-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
+    .hint{font-size:.85rem;color:#666;margin-top:.3rem}
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Mi Panel</h2>
+    <a href="/usuarios">Dashboard</a>
+    <a href="/mi-entreno" class="active">Mis Entrenos</a>
+    <a href="/mis-dietas">Mis Dietas</a>
+    <a href="/formulario-entreno">Crear Plan</a>
+    <a href="/registrar-progreso">Registrar Progreso</a>
+    <a href="/ajustes">Ajustes</a>
+    {% if gimnasio_principal %}
+      <hr style="margin: 1rem 0; border: none; border-top: 1px solid rgba(255,255,255,0.3)">
+      <h3 style="margin:1rem 0 .5rem;font-size:1rem;">Gimnasio Principal</h3>
+      <a href="/gimnasio/{{ gimnasio_principal.id }}">{{ gimnasio_principal.nombre }}</a>
+    {% endif %}
+    <a href="/gimnasios">Gimnasios que sigo</a>
+    <a href="/notificaciones" id="link-notificaciones">
+      🔔 Notificaciones
+      {% if num_noti_noleidas and num_noti_noleidas > 0 %}
+      <span style="background:#e74c3c;color:#fff;border-radius:8px;font-size:.9rem;padding:2px 8px;margin-left:8px;">{{ num_noti_noleidas }}</span>
+      {% endif %}
+    </a>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="header">
+      <div>
+        <h1>{{ dia_sel|default('Día') }} — Semana {{ semana_sel|default('—') }}</h1>
+<div class="badges">
+  <span class="badge">
+    Rutina #{{ rutina_id|default((rutina.id if rutina is defined and rutina and rutina.id is defined else '—')) }}
+  </span>
+  <span class="badge">
+    {{ (dia_obj.tipo_entrenamiento
+        if dia_obj is defined and dia_obj and dia_obj.tipo_entrenamiento is defined
+        else 'Entrenamiento') }}
+  </span>
+</div>
+      </div>
+      <div class="controls">
+        <button id="btnStartRoutine" class="btn btn-primary">▶ Iniciar rutina</button>
+        <button id="btnEndRoutine" class="btn btn-danger" disabled>■ Finalizar rutina</button>
+        <button id="btnRestToggle" class="btn btn-ghost" disabled>⏸ Descanso</button>
+        <span class="timer mono" id="routineTimer">00:00</span>
+      </div>
+    </div>
+
+    <p class="small muted">Consejo del día: {{ dia_obj.consejo or '—' }}</p>
+    <div class="divider"></div>
+
+    <div class="grid" id="exerciseGrid">
+      {% for ej in dia_obj.ejercicios %}
+      <div class="card" data-eidx="{{ loop.index0 }}">
+        <div class="thumb" id="thumb-{{ loop.index0 }}">
+          {% if ej.imagen_url %}
+            <img src="{{ ej.imagen_url }}" alt="{{ ej.nombre }}">
+          {% else %}
+            <div class="small muted">Sin imagen</div>
+          {% endif %}
+        </div>
+        <div class="row" style="justify-content:space-between;margin-top:.6rem;">
+          <h3>{{ ej.nombre }}</h3>
+          {% if ej.series is defined and ej.repeticiones is defined %}
+            <span class="pill">{{ ej.series }}x{{ ej.repeticiones }}</span>
+          {% endif %}
+        </div>
+        <p class="small muted">{{ ej.motivo or '' }}</p>
+
+        <div class="row" style="gap:.4rem;margin-top:.6rem;">
+          <button class="btn btn-ghost" onclick="genImage({{ loop.index0 }}, '{{ ej.nombre }}')" title="Generar imagen IA">🪄 Imagen IA</button>
+          <button class="btn btn-primary" id="btnStart-{{ loop.index0 }}" onclick="startExercise({{ loop.index0 }})">▶ Iniciar</button>
+          <button class="btn btn-danger" id="btnEnd-{{ loop.index0 }}" onclick="endExercise({{ loop.index0 }})" disabled>■ Finalizar</button>
+          <span class="timer mono" id="timer-{{ loop.index0 }}">00:00</span>
+        </div>
+
+        <div class="sets" id="sets-{{ loop.index0 }}">
+          <div class="row" style="justify-content:space-between;">
+            <strong>Series</strong>
+            <button class="btn btn-ghost" onclick="addSet({{ loop.index0 }})">＋ Añadir serie</button>
+          </div>
+          <div class="hint">Rellena peso (kg), repes y RPE opcional. Marca descansos con el botón global.</div>
+          <div class="sets-container" id="setsContainer-{{ loop.index0 }}"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="footer-actions">
+      <button class="btn btn-primary" id="btnSave" onclick="saveSession()" disabled>💾 Guardar sesión</button>
+    </div>
+  </div>
+
+  <script>
+    // ==== Datos del servidor ====
+    const RUTINA_ID = {{ rutina_id }};
+    const SEMANA = {{ semana_sel }};
+    const DIA = "{{ dia_sel }}";
+    const EJERCICIOS = {{ (dia_obj.ejercicios or []) | tojson }};
+
+    // ==== Estado en memoria ====
+    const state = {
+      routine: {
+        startedAt: null,
+        endedAt: null,
+        totalSeconds: 0,
+        restActive: false,
+        restStartedAt: null,
+        restTotalSeconds: 0
+      },
+      exercises: EJERCICIOS.map((ej, idx) => ({
+        idx,
+        nombre: ej.nombre,
+        imagen_url: ej.imagen_url || null,
+        orden_plan: idx + 1,
+        orden_real: null,
+        startedAt: null,
+        endedAt: null,
+        seconds: 0,
+        restSeconds: 0,
+        sets: [] // {set_index, peso, repes, rpe, startedAt, endedAt, restAfterSec}
+      })),
+      orderCounter: 0,
+      restLog: [] // descansos manuales a nivel sesión: {startedAt, endedAt, seconds}
+    };
+
+    // ==== Utilidades tiempo ====
+    function fmt(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      const m = String(Math.floor(sec / 60)).padStart(2,'0');
+      const s = String(sec % 60).padStart(2,'0');
+      return `${m}:${s}`;
+    }
+
+    // ==== Timers ====
+    let routineTicker = null;
+    const exerciseTickers = {}; // idx -> setInterval handle
+
+    function tickRoutine() {
+      if (state.routine.startedAt && !state.routine.endedAt) {
+        state.routine.totalSeconds = Math.floor((Date.now() - state.routine.startedAt) / 1000);
+        document.getElementById('routineTimer').textContent = fmt(state.routine.totalSeconds);
+      }
+    }
+
+    function tickExercise(idx) {
+      const ex = state.exercises[idx];
+      if (ex.startedAt && !ex.endedAt) {
+        ex.seconds = Math.floor((Date.now() - ex.startedAt) / 1000);
+        document.getElementById(`timer-${idx}`).textContent = fmt(ex.seconds);
+      }
+    }
+
+    // ==== Rutina ====
+    const btnStartRoutine = document.getElementById('btnStartRoutine');
+    const btnEndRoutine = document.getElementById('btnEndRoutine');
+    const btnRestToggle = document.getElementById('btnRestToggle');
+    const btnSave = document.getElementById('btnSave');
+
+    btnStartRoutine.addEventListener('click', () => {
+      if (state.routine.startedAt) return;
+      state.routine.startedAt = Date.now();
+      routineTicker = setInterval(tickRoutine, 1000);
+      btnStartRoutine.disabled = true;
+      btnEndRoutine.disabled = false;
+      btnRestToggle.disabled = false;
+      btnSave.disabled = false;
+    });
+
+    btnEndRoutine.addEventListener('click', () => {
+      if (!state.routine.startedAt || state.routine.endedAt) return;
+      state.routine.endedAt = Date.now();
+      clearInterval(routineTicker);
+      tickRoutine();
+      btnEndRoutine.disabled = true;
+      btnRestToggle.disabled = true;
+      // Cierra descanso si estaba activo
+      if (state.routine.restActive) toggleRest();
+    });
+
+    // Descanso manual (sesión)
+    btnRestToggle.addEventListener('click', toggleRest);
+    function toggleRest() {
+      if (!state.routine.startedAt || state.routine.endedAt) return;
+      state.routine.restActive = !state.routine.restActive;
+      if (state.routine.restActive) {
+        state.routine.restStartedAt = Date.now();
+        btnRestToggle.textContent = '▶ Fin descanso';
+      } else {
+        const sec = Math.floor((Date.now() - state.routine.restStartedAt)/1000);
+        state.routine.restTotalSeconds += sec;
+        state.restLog.push({ startedAt: state.routine.restStartedAt, endedAt: Date.now(), seconds: sec, tipo: 'manual' });
+        state.routine.restStartedAt = null;
+        btnRestToggle.textContent = '⏸ Descanso';
+      }
+    }
+
+    // ==== Ejercicios ====
+    function startExercise(idx) {
+      const ex = state.exercises[idx];
+      if (ex.startedAt) return;
+      ex.startedAt = Date.now();
+      state.orderCounter += 1;
+      ex.orden_real = state.orderCounter;
+      document.getElementById(`btnStart-${idx}`).disabled = true;
+      document.getElementById(`btnEnd-${idx}`).disabled = false;
+      exerciseTickers[idx] = setInterval(() => tickExercise(idx), 1000);
+      tickExercise(idx);
+    }
+
+    function endExercise(idx) {
+      const ex = state.exercises[idx];
+      if (!ex.startedAt || ex.endedAt) return;
+      ex.endedAt = Date.now();
+      clearInterval(exerciseTickers[idx]);
+      tickExercise(idx);
+      document.getElementById(`btnEnd-${idx}`).disabled = true;
+    }
+
+    // Añadir serie a un ejercicio
+    function addSet(idx) {
+      const ex = state.exercises[idx];
+      const container = document.getElementById(`setsContainer-${idx}`);
+      const setIndex = ex.sets.length + 1;
+      const row = document.createElement('div');
+      row.className = 'set-row';
+      row.innerHTML = `
+        <input type="number" step="0.5" min="0" placeholder="Peso (kg)" />
+        <input type="number" min="0" placeholder="Reps" />
+        <input type="number" step="0.5" min="0" placeholder="RPE" />
+        <button class="btn btn-ghost">✔ Guardar</button>
+      `;
+      const [inpPeso, inpRepes, inpRpe, btn] = row.children;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Crear registro de serie
+        const serie = {
+          set_index: setIndex,
+          peso: parseFloat(inpPeso.value || 0) || null,
+          repes: parseInt(inpRepes.value || 0) || null,
+          rpe: parseFloat(inpRpe.value || 0) || null,
+          startedAt: Date.now(),  // opcional: si quieres marcar inicio real al guardar
+          endedAt: Date.now(),
+          restAfterSec: 0
+        };
+        ex.sets.push(serie);
+        btn.disabled = true;
+        btn.textContent = '✓ Guardada';
+      });
+      container.appendChild(row);
+    }
+
+    // Generar imagen IA para un ejercicio (si no tiene)
+    async function genImage(idx, nombre) {
+      const thumb = document.getElementById(`thumb-${idx}`);
+      const btn = event.currentTarget;
+      btn.disabled = true; btn.textContent = 'Generando...';
+      try {
+        const res = await fetch(`/api/ejercicios/generar-imagen?rutina_id=${RUTINA_ID}&nombre=${encodeURIComponent(nombre)}`);
+        const data = await res.json();
+        if (data && data.url) {
+          state.exercises[idx].imagen_url = data.url;
+          thumb.innerHTML = `<img src="${data.url}" alt="${nombre}">`;
+          btn.textContent = '🪄 Imagen IA';
+          btn.disabled = false;
+        } else {
+          btn.textContent = 'Reintentar IA';
+          btn.disabled = false;
+          alert('No se pudo generar la imagen.');
+        }
+      } catch (e) {
+        console.error(e);
+        btn.textContent = 'Reintentar IA';
+        btn.disabled = false;
+        alert('Error generando la imagen.');
+      }
+    }
+
+    // Construir payload y guardar sesión completa
+    async function saveSession() {
+      if (!state.routine.startedAt) { alert('Inicia la rutina antes de guardar.'); return; }
+      if (!state.routine.endedAt) { if(!confirm('La rutina sigue en curso. ¿Guardar igualmente?')) return; }
+
+      // Si hay descanso activo, cerrarlo antes de guardar
+      if (state.routine.restActive) toggleRest();
+
+      const payload = {
+        semana: SEMANA,
+        dia: DIA,
+        fecha: new Date().toISOString().slice(0,10),
+        hora_inicio_rutina: state.routine.startedAt ? new Date(state.routine.startedAt).toISOString() : null,
+        hora_fin_rutina: state.routine.endedAt ? new Date(state.routine.endedAt).toISOString() : null,
+        tiempo_total_min: state.routine.startedAt ? ( ( (state.routine.endedAt || Date.now()) - state.routine.startedAt ) / 60000 ) : 0,
+        minutos_descanso: state.routine.restTotalSeconds / 60,
+        descansos: state.restLog.map(r => ({
+          tipo: r.tipo || 'manual',
+          started_at: new Date(r.startedAt).toISOString(),
+          ended_at: new Date(r.endedAt).toISOString(),
+          segundos: r.seconds
+        })),
+        ejercicios_realizados: state.exercises.map(ex => ({
+          nombre: ex.nombre,
+          imagen_url: ex.imagen_url,
+          hora_inicio: ex.startedAt ? new Date(ex.startedAt).toISOString() : null,
+          hora_fin: ex.endedAt ? new Date(ex.endedAt).toISOString() : null,
+          minutos_ejercicio: ex.startedAt ? ( ((ex.endedAt || Date.now()) - ex.startedAt)/60000 ) : 0,
+          minutos_descanso: ex.restSeconds/60,
+          orden_plan: ex.orden_plan,
+          orden_real: ex.orden_real,
+          finalizado: !!ex.endedAt,
+          series: ex.sets
+        })),
+        orden_ejercicios: state.exercises
+          .filter(e => e.orden_real != null)
+          .sort((a,b)=>a.orden_real-b.orden_real)
+          .map(e => e.nombre)
+      };
+
+      try {
+        const res = await fetch("/mi-entreno/guardar-sesion", {
+          method: "POST",
+          body: new URLSearchParams({
+            rutina_id: RUTINA_ID,
+            semana: SEMANA,
+            dia: DIA,
+            datos_json: JSON.stringify(payload)
+          })
+        });
+        const data = await res.json();
+        alert(data.msg || 'Sesión guardada.');
+      } catch (e) {
+        console.error(e);
+        alert("Error guardando la sesión.");
+      }
+    }
+  </script>
+</body>
+</html>

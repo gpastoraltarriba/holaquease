@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Formulario Mixto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f4f6fc;
+      padding: 2rem;
+      color: #333;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: #333;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      margin-bottom: 1rem;
+    }
+    input[type="checkbox"] {
+      width: auto;
+      margin-right: 0.5rem;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      font-weight: normal;
+    }
+    .deporte-extra {
+      display: none;
+      margin-top: 1rem;
+    }
+    button {
+      display: block;
+      width: 100%;
+      background-color: #667eea;
+      color: white;
+      padding: 1rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 2rem;
+    }
+    button:hover {
+      background-color: #5a67d8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Formulario Mixto (Entreno + Dieta)</h2>
+    <form method="post" action="/formulario-mixto">
+
+      <!-- Datos generales -->
+      <label for="altura">Altura (cm)</label>
+      <input type="number" name="altura" id="altura" value="{{ datos.altura or '' }}" required>
+
+      <label for="edad">Edad</label>
+      <input type="number" name="edad" id="edad" value="{{ datos.edad or '' }}" required>
+
+      <label for="sexo">Sexo</label>
+      <select name="sexo" id="sexo" required>
+        <option value="" {% if not datos.sexo %}selected{% endif %}>Selecciona</option>
+        <option value="hombre" {% if datos.sexo == 'hombre' %}selected{% endif %}>Hombre</option>
+        <option value="mujer" {% if datos.sexo == 'mujer' %}selected{% endif %}>Mujer</option>
+        <option value="otro" {% if datos.sexo == 'otro' %}selected{% endif %}>Otro</option>
+      </select>
+
+      <!-- Entreno -->
+      <label for="experiencia_entrenamiento">Nivel de experiencia</label>
+      <select name="experiencia_entrenamiento" id="experiencia_entrenamiento" required>
+        <option value="">Selecciona</option>
+        <option value="principiante" {% if datos.experiencia_entrenamiento == 'principiante' %}selected{% endif %}>Principiante</option>
+        <option value="intermedio" {% if datos.experiencia_entrenamiento == 'intermedio' %}selected{% endif %}>Intermedio</option>
+        <option value="avanzado" {% if datos.experiencia_entrenamiento == 'avanzado' %}selected{% endif %}>Avanzado</option>
+      </select>
+
+      <label for="tiempo_entrenamiento">Tiempo disponible (minutos por sesión)</label>
+      <input type="number" name="tiempo_entrenamiento" id="tiempo_entrenamiento" value="{{ datos.tiempo_entrenamiento or '' }}" required>
+
+      <label>Preferencias de entrenamiento</label>
+      <div class="checkbox-group">
+        {% for p in ['fuerza', 'resistencia', 'movilidad', 'salud', 'estetica'] %}
+        <label><input type="checkbox" name="preferencias" value="{{ p }}"
+          {% if datos.preferencias and p in datos.preferencias %}checked{% endif %}>{{ p.capitalize() }}</label>
+        {% endfor %}
+      </div>
+
+      <label>Objetivos de entrenamiento</label>
+      <div class="checkbox-group">
+        {% for o in ['perder_peso', 'ganar_masa', 'mantenerme', 'mejorar_salud', 'deporte'] %}
+        <label><input type="checkbox" name="objetivos_entreno" value="{{ o }}"
+          {% if datos.objetivos_entreno and o in datos.objetivos_entreno %}checked{% endif %}>{{ o.replace('_', ' ').capitalize() }}</label>
+        {% endfor %}
+      </div>
+
+      <div id="deporte_extra" class="deporte-extra">
+        <label for="nombre_deporte">¿Qué deporte practicas?</label>
+        <input type="text" name="nombre_deporte" id="nombre_deporte" value="{{ datos.nombre_deporte or '' }}">
+
+        <label for="aspectos_a_mejorar">¿Qué aspectos deseas mejorar?</label>
+        <textarea name="aspectos_a_mejorar" id="aspectos_a_mejorar" rows="3">{{ datos.aspectos_a_mejorar or '' }}</textarea>
+      </div>
+
+      <!-- Dieta -->
+      <label for="tipo_dieta">Tipo de dieta deseada</label>
+      <input type="text" name="tipo_dieta" id="tipo_dieta" value="{{ datos.tipo_dieta or '' }}" required>
+
+      <label for="objetivos_dieta">Objetivos de dieta</label>
+      <div class="checkbox-group">
+        {% for o in ['perder_peso', 'ganar_masa', 'mantenerme', 'mejorar_salud'] %}
+        <label><input type="checkbox" name="objetivos_dieta" value="{{ o }}"
+          {% if datos.objetivos_dieta and o in datos.objetivos_dieta %}checked{% endif %}>{{ o.replace('_', ' ').capitalize() }}</label>
+        {% endfor %}
+      </div>
+
+      <label for="alergias">Alergias alimentarias</label>
+      <input type="text" name="alergias" id="alergias" value="{{ datos.alergias or '' }}">
+
+      <label for="alimentos_no_deseados">Alimentos que no deseas incluir</label>
+      <input type="text" name="alimentos_no_deseados" id="alimentos_no_deseados" value="{{ datos.alimentos_no_deseados or '' }}">
+
+      <label for="tiempo_comidas">¿En qué momento prefieres comer?</label>
+      <input type="text" name="tiempo_comidas" id="tiempo_comidas" value="{{ datos.tiempo_comidas or '' }}" required>
+
+      <label for="comidas_al_dia">¿Cuántas comidas al día prefieres?</label>
+      <input type="number" name="comidas_al_dia" id="comidas_al_dia" value="{{ datos.comidas_al_dia or '' }}" required>
+
+      <button type="submit">Enviar formulario</button>
+    </form>
+  </div>
+
+  <script>
+    document.querySelectorAll('input[name="objetivos_entreno"]').forEach(input => {
+      input.addEventListener("change", () => {
+        const deporteSeleccionado = Array.from(document.querySelectorAll('input[name="objetivos_entreno"]:checked'))
+          .some(input => input.value === "deporte");
+        document.getElementById("deporte_extra").style.display = deporteSeleccionado ? "block" : "none";
+      });
+    });
+
+    // Inicializar por si ya está seleccionado
+    window.addEventListener('DOMContentLoaded', () => {
+      const deporteSeleccionado = Array.from(document.querySelectorAll('input[name="objetivos_entreno"]:checked'))
+        .some(input => input.value === "deporte");
+      document.getElementById("deporte_extra").style.display = deporteSeleccionado ? "block" : "none";
+    });
+  </script>
+</body>
+</html>
+

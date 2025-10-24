@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% extends "base.html" %}
+{% block content %}
+<section class="container">
+  <h1 class="title">Mis Entrenos</h1>
+  {% if rutinas %}
+    <div class="grid">
+      {% for r in rutinas %}
+        <a class="card" href="/mis-entrenos/{{ r.id }}">
+          <div class="card-body">
+            <h3>Rutina #{{ r.id }}</h3>
+            <p>Creada: {{ (r.fecha_creacion|string)|default('—') }}</p>
+            <span class="badge">Activa</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No tienes rutinas todavía.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+</body>
+</html>

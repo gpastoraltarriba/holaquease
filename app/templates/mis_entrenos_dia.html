@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+{% extends "base.html" %}
+{% block content %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<section class="container">
+  <h1 class="title">Rutina #{{ rutina.id }} — {{ dia }}</h1>
+
+  <div class="controls" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin:.5rem 0 1rem">
+    <button class="btn btn-primary" id="btnStartRoutine">▶ Iniciar sesión</button>
+    <button class="btn btn-danger" id="btnEndRoutine" disabled>■ Finalizar</button>
+    <button class="btn btn-ghost" id="btnRestToggle" disabled>⏸ Descanso</button>
+    <span class="timer mono" id="routineTimer">00:00</span>
+  </div>
+
+  {% if ejercicios %}
+    <form id="formSesion" class="stack" style="display:grid;gap:1rem">
+      <!-- INICIO BLOQUE EXERCISE -->
+{% for e in ejercicios %}
+  <div class="exercise-card" data-eidx="{{ loop.index0 }}" data-ej="{{ e.nombre }}" style="border:1px solid #e7e7e9;border-radius:14px;background:#f7f8fb">
+
+    <div class="exercise-head" style="display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid #ececf1">
+      <div style="display:flex;align-items:center;gap:.8rem">
+        <div class="thumb" id="thumb-{{ loop.index0 }}" style="width:120px;height:80px;border-radius:12px;overflow:hidden;background:#eee;display:flex;align-items:center;justify-content:center">
+  {% set img = (e.imagen_url or '') %}
+  {% if img and img.startswith('/static/') %}
+    <img src="{{ img }}" alt="{{ e.nombre }}" style="width:100%;height:100%;object-fit:cover">
+  {% else %}
+    <span class="small muted">Sin imagen</span>
+  {% endif %}
+</div>
+
+
+        <div>
+          <h3 style="margin:0">{{ e.nombre }}</h3>
+          <div class="muted small">{{ e.grupo or '' }}</div>
+          {% if e.series is defined and e.repeticiones is defined %}
+            <div class="pill" style="display:inline-block;margin-top:.25rem;background:#f7f8ff;border:1px solid #e2e7ff;padding:.2rem .5rem;border-radius:999px;font-size:.8rem">
+              {{ e.series }}x{{ e.repeticiones }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="suggest" style="display:flex;align-items:center;gap:.4rem">
+        <span class="pill">Sugerido: <strong>{{ e.sugerido if e.sugerido is not none else '—' }}</strong></span>
+        <button type="button" class="btn btn-ghost btn-sugerir" data-ej="{{ e.nombre }}">↻ Recalcular</button>
+        <span class="pill" id="sug-{{ loop.index0 }}">—</span>
+        <button type="button" class="btn btn-ghost" onclick="genImage({{ loop.index0 }}, '{{ e.nombre }}', this)">🪄 Imagen IA</button>
+      </div>
+    </div> <!-- ✅ cierre de .exercise-head -->
+
+    <div class="exercise-body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;padding:1rem">
+      <label> Peso (kg)
+        <input type="number" step="0.5" name="peso" value="{{ e.peso|default(e.sugerido) }}">
+      </label>
+
+      <label> Reps
+        <input type="number" name="reps" value="{{ e.reps|default(e.reps_objetivo) }}">
+      </label>
+
+      <label> Series
+        <input type="number" name="series" value="{{ e.series|default(3) }}">
+      </label>
+
+      <div class="row" style="display:flex;gap:.4rem;align-items:center;margin-top:1.2rem">
+        <button type="button" class="btn btn-primary" id="btnStart-{{ loop.index0 }}" onclick="startExercise({{ loop.index0 }})">▶ Iniciar</button>
+        <button type="button" class="btn btn-danger"  id="btnEnd-{{ loop.index0 }}"   onclick="endExercise({{ loop.index0 }})" disabled>■ Finalizar</button>
+        <span class="timer mono" id="timer-{{ loop.index0 }}">00:00</span>
+        <button type="button" class="btn btn-ghost" id="btnRestEx-{{ loop.index0 }}" onclick="toggleRestExercise({{ loop.index0 }})" disabled>⏸ Descanso ej.</button>
+        <span class="timer mono" id="restTimer-{{ loop.index0 }}">00:00</span>
+      </div>
+    </div> <!-- ✅ cierra .exercise-body -->
+
+    <div class="sets" style="border-top:1px dashed #e5e7eb;padding:1rem">
+      <div class="row" style="display:flex;justify-content:space-between;align-items:center">
+        <strong>Series</strong>
+        <button class="btn btn-ghost" type="button" onclick="addSet({{ loop.index0 }})">＋ Añadir serie</button>
+      </div>
+      <div class="hint small muted" style="margin-top:.6rem">Introduce peso, repes y RPE opcional. Marca descansos con el botón global.</div>
+      <div class="sets-container" id="setsContainer-{{ loop.index0 }}" style="margin-top:.6rem;display:grid;gap:.35rem"></div>
+    </div>
+
+  </div> <!-- ✅ cierre de .exercise-card (antes faltaba) -->
+{% endfor %}
+<!-- FIN BLOQUE EXERCISE -->
+
+    </form>
+
+    <div class="actions" style="margin-top:1rem;display:flex;gap:.75rem">
+      <button class="btn btn-primary" id="btnGuardar">💾 Guardar sesión</button>
+      <a class="btn" href="/mis-entrenos/{{ rutina.id }}">← Calendario</a>
+    </div>
+  {% else %}
+    <p>No hay ejercicios planificados para {{ dia }}.</p>
+    <a class="btn" href="/mis-entrenos/{{ rutina.id }}">← Calendario</a>
+  {% endif %}
+</section>
+
+<script>
+const RUTINA_ID = {{ rutina.id }};
+const DIA = "{{ dia }}";
+const EJERCICIOS = {{ ejercicios | tojson }};
+
+// ---- Estado global ----
+const state = {
+  routine: {
+    startedAt: null,
+    endedAt: null,
+    totalSeconds: 0,
+    restActive: false,
+    restStartedAt: null,
+    restTotalSeconds: 0
+  },
+  exercises: EJERCICIOS.map((e,idx)=>({
+    idx,
+    nombre: e.nombre,
+    imagen_url: e.imagen_url || null,
+    startedAt: null,
+    endedAt: null,
+    seconds: 0,
+    // descanso por ejercicio
+    restActive: false,
+    restStartedAt: null,
+    restSeconds: 0,
+    restLog: [],
+    sets: []
+  })),
+  // descansos globales (sesión)
+  restLog: [],
+  orderCounter: 0
+};
+
+let routineTicker = null;
+const exerciseTickers = {};
+const exerciseRestTickers = {};
+
+// ---- Utilidades ----
+function fmt(s){
+  s = Math.max(0, Math.floor(s));
+  const m = String(Math.floor(s/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  return `${m}:${ss}`;
+}
+
+// ---- Controles sesión (global) ----
+const elStart = document.getElementById('btnStartRoutine');
+const elEnd   = document.getElementById('btnEndRoutine');
+const elRest  = document.getElementById('btnRestToggle');
+const elTimer = document.getElementById('routineTimer');
+
+function tickRoutine(){
+  if(state.routine.startedAt && !state.routine.endedAt){
+    state.routine.totalSeconds = Math.floor((Date.now()-state.routine.startedAt)/1000);
+    elTimer.textContent = fmt(state.routine.totalSeconds);
+  }
+}
+
+function startRoutine(){
+  if(state.routine.startedAt) return;
+  state.routine.startedAt = Date.now();
+  routineTicker = setInterval(tickRoutine, 1000);
+  elStart.disabled = true;
+  elEnd.disabled = false;
+  elRest.disabled = false;
+}
+
+function stopRoutine(){
+  if(!state.routine.startedAt || state.routine.endedAt) return;
+  // si está activo el descanso global, ciérralo primero
+  if(state.routine.restActive) toggleRestGlobal();
+  state.routine.endedAt = Date.now();
+  clearInterval(routineTicker);
+  tickRoutine();
+  elEnd.disabled = true;
+  elRest.disabled = true;
+}
+
+elStart.addEventListener('click', startRoutine);
+elEnd  .addEventListener('click', stopRoutine);
+
+elRest.addEventListener('click', toggleRestGlobal);
+function toggleRestGlobal(){
+  if(!state.routine.startedAt || state.routine.endedAt) return;
+  state.routine.restActive = !state.routine.restActive;
+  if(state.routine.restActive){
+    state.routine.restStartedAt = Date.now();
+    elRest.textContent = '▶ Fin descanso';
+  } else {
+    const sec = Math.floor((Date.now()-state.routine.restStartedAt)/1000);
+    state.routine.restTotalSeconds += sec;
+    state.restLog.push({
+      startedAt: state.routine.restStartedAt,
+      endedAt: Date.now(),
+      seconds: sec
+    });
+    state.routine.restStartedAt = null;
+    elRest.textContent = '⏸ Descanso';
+  }
+}
+
+// ---- Timers por ejercicio ----
+function tickExercise(idx){
+  const ex = state.exercises[idx];
+  if(ex.startedAt && !ex.endedAt){
+    ex.seconds = Math.floor((Date.now()-ex.startedAt)/1000);
+    document.getElementById(`timer-${idx}`).textContent = fmt(ex.seconds);
+  }
+}
+function tickExerciseRest(idx){
+  const ex = state.exercises[idx];
+  const el = document.getElementById(`restTimer-${idx}`);
+  if(!el) return;
+  if(ex.restActive){
+    const sec = Math.floor((Date.now()-ex.restStartedAt)/1000);
+    el.textContent = fmt(ex.restSeconds + sec);
+  } else {
+    el.textContent = fmt(ex.restSeconds);
+  }
+}
+
+// Iniciar ejercicio → arranca también la sesión global si no estaba
+function startExercise(idx){
+  const ex = state.exercises[idx];
+
+  if(!state.routine.startedAt) startRoutine(); // << NUEVO: inicia sesión global
+  if(ex.startedAt) return;
+
+  ex.startedAt = Date.now();
+  state.orderCounter += 1;
+
+  document.getElementById(`btnStart-${idx}`).disabled  = true;
+  document.getElementById(`btnEnd-${idx}`).disabled    = false;
+  const btnRestEx = document.getElementById(`btnRestEx-${idx}`);
+  if(btnRestEx) btnRestEx.disabled = false;
+
+  exerciseTickers[idx] = setInterval(()=>tickExercise(idx), 1000);
+  tickExercise(idx);
+  tickExerciseRest(idx);
+}
+
+function endExercise(idx){
+  const ex = state.exercises[idx];
+  if(!ex.startedAt || ex.endedAt) return;
+
+  // Si el ejercicio está en descanso, ciérralo antes
+  if(ex.restActive) toggleRestExercise(idx);
+
+  ex.endedAt = Date.now();
+
+  clearInterval(exerciseTickers[idx]);
+  tickExercise(idx);
+
+  clearInterval(exerciseRestTickers[idx]);
+  tickExerciseRest(idx);
+
+  document.getElementById(`btnEnd-${idx}`).disabled    = true;
+  const btnRestEx = document.getElementById(`btnRestEx-${idx}`);
+  if(btnRestEx) btnRestEx.disabled = true;
+}
+
+// Descanso por ejercicio (sincroniza con descanso global)
+function toggleRestExercise(idx){
+  const ex = state.exercises[idx];
+  if(!ex.startedAt || ex.endedAt) return;
+
+  ex.restActive = !ex.restActive;
+  const btn = document.getElementById(`btnRestEx-${idx}`);
+
+  if(ex.restActive){
+    // Al iniciar descanso por ejercicio, fuerza descanso global ON si no lo está
+    if(!state.routine.restActive) toggleRestGlobal();
+    ex.restStartedAt = Date.now();
+    if(btn) btn.textContent = '▶ Fin desc. ej.';
+    exerciseRestTickers[idx] = setInterval(()=>tickExerciseRest(idx), 500);
+  } else {
+    // Al terminar descanso por ejercicio, suma tiempo y, si el global sigue ON, apágalo
+    const sec = Math.floor((Date.now()-ex.restStartedAt)/1000);
+    ex.restSeconds += sec;
+    ex.restLog.push({
+      startedAt: ex.restStartedAt,
+      endedAt: Date.now(),
+      seconds: sec
+    });
+    ex.restStartedAt = null;
+    if(btn) btn.textContent = '⏸ Descanso ej.';
+    clearInterval(exerciseRestTickers[idx]);
+    tickExerciseRest(idx);
+
+    if(state.routine.restActive) toggleRestGlobal();
+  }
+}
+
+// ---- Series (sets) ----
+function addSet(idx){
+  const ex = state.exercises[idx];
+  const cont = document.getElementById(`setsContainer-${idx}`);
+  const n = ex.sets.length + 1;
+  const row = document.createElement('div');
+  row.style.display='grid';
+  row.style.gridTemplateColumns='1fr 1fr 1fr auto';
+  row.style.gap='.4rem';
+  row.style.alignItems='center';
+  row.innerHTML = `
+    <input type="number" step="0.5" min="0" placeholder="Peso (kg)">
+    <input type="number" min="0" placeholder="Reps">
+    <input type="number" step="0.5" min="0" placeholder="RPE">
+    <button class="btn btn-ghost">✔ Guardar</button>`;
+  const [peso,reps,rpe,btn] = row.children;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    ex.sets.push({
+      set_index: n,
+      peso: parseFloat(peso.value||0) || null,
+      repes: parseInt(reps.value||0) || null,
+      rpe: parseFloat(rpe.value||0) || null,
+      savedAt: Date.now()
+    });
+    btn.disabled = true;
+    btn.textContent = '✓ Guardada';
+  });
+  cont.appendChild(row);
+}
+
+// ---- IA: sugerir carga e imagen ----
+document.querySelectorAll('.btn-sugerir').forEach((btn, idx)=>{
+  btn.addEventListener('click', async ()=>{
+    const ej = btn.dataset.ej;
+    const pill = document.getElementById('sug-'+idx);
+    if(pill) pill.textContent = '…';
+    const r = await fetch(`/api/sugerencia-carga?ejercicio=${encodeURIComponent(ej)}`);
+    const data = await r.json();
+    if(pill) pill.textContent = (data.suggested_load ?? '—') + (data.suggested_load ? ' kg' : '');
+    if (data.suggested_load){
+      const card = btn.closest('.exercise-card');
+      const inputPeso = card?.querySelector('input[name="peso"]');
+      if (inputPeso && (!inputPeso.value || Number(inputPeso.value) === 0)){
+        inputPeso.value = data.suggested_load;
+      }
+    }
+  });
+});
+
+
+async function genImage(idx, nombre, btn){
+  const thumb = document.getElementById(`thumb-${idx}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+
+  try{
+    const url = `/api/ejercicios/generar-imagen?rutina_id=${RUTINA_ID}&nombre=${encodeURIComponent(nombre)}`;
+    const res = await fetch(url);
+    if(!res.ok){
+      let detail = '';
+      try { const err = await res.json(); detail = err.detail || ''; } catch(_){}
+      throw new Error(detail || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+
+    // ✅ El backend ya devuelve SOLO rutas locales (/static/uploads/...)
+    const localUrl = data.url;
+    if (!localUrl || !localUrl.startsWith('/static/')) {
+      throw new Error('Respuesta sin URL local');
+    }
+
+    // Pinta en el DOM (sustituye cualquier contenido previo)
+    if (thumb) {
+      thumb.innerHTML = `<img src="${localUrl}" alt="${nombre}" style="width:100%;height:100%;object-fit:cover">`;
+    }
+
+    // (si usas un estado JS, actualízalo también)
+    if (window.state?.exercises?.[idx]) {
+      window.state.exercises[idx].imagen_url = localUrl;
+    }
+
+    if (btn) btn.textContent = '🪄 Imagen IA';
+  } catch (e){
+    console.error('genImage error:', e);
+    if (btn) btn.textContent = 'Reintentar IA';
+    alert('No se pudo generar la imagen: ' + (e?.message || e));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+window.genImage = genImage; // necesario para que el onclick del HTML funcione
+
+
+
+// ---- Guardar sesión (incluye descansos globales y por ejercicio) ----
+document.getElementById('btnGuardar')?.addEventListener('click', async ()=>{
+  const items = [];
+  const exercisesPayload = [];
+
+  document.querySelectorAll('.exercise-card').forEach(card=>{
+    const nombre = card.dataset.ej;
+    const idx = parseInt(card.dataset.eidx, 10);
+    const peso = parseFloat(card.querySelector('input[name="peso"]').value || 0);
+    const reps = parseInt(card.querySelector('input[name="reps"]').value || 0);
+    const series = parseInt(card.querySelector('input[name="series"]').value || 0);
+    items.push({ nombre, peso, reps, series });
+
+    const ex = state.exercises[idx];
+    exercisesPayload.push({
+      nombre,
+      startedAt: ex.startedAt,
+      endedAt: ex.endedAt,
+      seconds: ex.seconds,
+      restSeconds: ex.restSeconds,  // << tiempo total de descanso por ejercicio
+      restLog: ex.restLog,          // << pausas por ejercicio
+      sugerido: (EJERCICIOS[idx]?.sugerido ?? null),
+      input: { peso, reps, series },
+      sets: ex.sets,
+      swap_from: ex.swap_from || null,
+      swap_to: ex.swap_to || null
+    });
+  });
+
+  const payload = {
+    rutina_id: RUTINA_ID,
+    dia: DIA,
+    items, // compatibilidad con tu lógica anterior
+    timing: {
+      startedAt: state.routine.startedAt,
+      endedAt: state.routine.endedAt,
+      totalSeconds: state.routine.totalSeconds,
+      restTotalSeconds: state.routine.restTotalSeconds
+    },
+    restLog: state.restLog,       // descansos globales
+    exercises: exercisesPayload   // lista con tiempos y descansos por ejercicio
+  };
+
+  const r = await fetch('/api/guardar-sesion', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await r.json();
+  if(data.ok){
+    alert('Sesión guardada ✅');
+  } else {
+    alert('Error: ' + (data.detail || ''));
+  }
+});
+</script>
+
+
+{% endblock %}
+
+</body>
+</html>

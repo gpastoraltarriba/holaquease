@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+{% extends "base.html" %}
+{% block title %}Mis Dietas{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom:1rem;">🧾 Mis Dietas</h1>
+
+{% if not dietas or dietas|length == 0 %}
+  <div class="no-data">No tienes dietas guardadas todavía.</div>
+{% else %}
+  <div class="dashboard">
+    {% for d in dietas %}
+      <div class="card">
+        <h3>{{ d.nombre or ("Dieta #" ~ d.id) }}</h3>
+        <div class="small" style="margin:.25rem 0 .75rem;">
+          Creada el {{ (d.fecha_creacion or d.creado_en)|default('', true) }}
+        </div>
+        <div class="kpi-sub">
+          Semanas: {{ d.semanas|default('—', true) }}
+        </div>
+        <div style="margin-top:.75rem;">
+          <a href="/mis-dietas/{{ d.id }}" class="btn primary">Ver detalle</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}
+
+</body>
+</html>

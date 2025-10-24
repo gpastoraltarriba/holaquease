@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ usuario.nombre }} - Perfil</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { display: flex; height: 100vh; background: #f4f6fc; }
+
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(to bottom, #667eea, #764ba2);
+      padding: 2rem 1rem;
+      color: white;
+      min-height: 100vh;
+    }
+    .sidebar h2 { margin-bottom: 2rem; text-align: center; font-size: 1.5rem; }
+    .sidebar a {
+      display: block;
+      color: white;
+      text-decoration: none;
+      margin: 1rem 0;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      transition: background 0.3s;
+    }
+    .sidebar a:hover { background: rgba(255,255,255,0.2); }
+
+    .main {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    .top {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .foto {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #ddd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: white;
+      overflow: hidden;
+    }
+    .foto img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .privada-msg {
+      margin: 3rem 0 0 0;
+      padding: 2rem 1rem;
+      background: #eef1fd;
+      border-radius: 20px;
+      text-align: center;
+      color: #888;
+      font-size: 1.1rem;
+      font-weight: 500;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    }
+    .card h3 { margin-bottom: 0.5rem; color: #333; }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 3rem 0 1rem;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+    .tabs span {
+      padding-bottom: 4px;
+      transition: border 0.2s;
+    }
+    .tabs span.active {
+      border-bottom: 3px solid #667eea;
+    }
+    .contenido-tab { display: none; }
+    .contenido-tab.active { display: block; }
+    .grid-media {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+    .media-card {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .media-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .media-card p {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+    pre {
+      background: #f3f3f3;
+      padding: 1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+    }
+    .muted {
+      color: #999;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    #buscadorLateral {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 360px;
+      height: 100%;
+      background: white;
+      box-shadow: -2px 0 12px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      transition: right 0.3s ease;
+      z-index: 1000;
+      overflow-y: auto;
+    }
+    #buscadorLateral input {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    #buscadorLateral ul {
+      margin-top: 1rem;
+      list-style: none;
+      padding: 0;
+    }
+    #buscadorLateral li {
+      padding: 0.5rem 0;
+    }
+    #buscadorLateral a {
+      text-decoration: none;
+      color: #333;
+    }
+    #buscadorLateral a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Mi Panel</h2>
+    <a href="/usuarios">Dashboard</a>
+    <a href="/notificaciones" id="link-notificaciones">
+      🔔 Notificaciones
+      {% if num_noti_noleidas and num_noti_noleidas > 0 %}
+        <span style="background:#e74c3c; color:white; border-radius:8px; font-size:0.9rem; padding:2px 8px; margin-left:8px;">{{ num_noti_noleidas }}</span>
+      {% endif %}
+    </a>
+    <a href="/mi-entreno">Mis Entrenos</a>
+    <a href="/mis-dietas">Mis Dietas</a>
+    <a href="/formulario-entreno">Crear Plan</a>
+    <a href="/registrar-progreso">Registrar Progreso</a>
+    <a href="/ajustes">Ajustes</a>
+    <a href="/gimnasios">Gimnasios que sigo</a>
+    <a href="#" onclick="abrirBuscador()">🔍 Buscar</a>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <!-- HEADER -->
+    <div class="top">
+      <div class="foto">
+        {% if usuario.imagen_url %}
+          <img src="{{ usuario.imagen_url }}" alt="Foto de perfil">
+        {% else %}
+          👤
+        {% endif %}
+      </div>
+      <div>
+        <h2>{{ usuario.nombre }}</h2>
+        {% if usuario.descripcion %}
+          <p style="color: #666;">{{ usuario.descripcion }}</p>
+        {% endif %}
+        <!-- BLOQUE AMIGOS AJAX -->
+        <div id="amigos-contenedor">
+          {% if puede_agregarse %}
+            <button id="btn-agregar-amigo"
+              style="padding: 0.4rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+              ➕ Agregar Amigo
+            </button>
+          {% elif pendiente %}
+            <span id="estado-amistad" style="color: #888;">Solicitud de amistad pendiente</span>
+            <button id="btn-cancelar-amigo"
+              style="margin-left:1rem;padding: 0.4rem 1rem; background: #aaa; color: white; border: none; border-radius: 8px; cursor: pointer;">
+              Cancelar
+            </button>
+          {% elif ya_son_amigos %}
+            <span id="estado-amistad" style="color: #4caf50;">✔ Ya sois amigos</span>
+            <button id="btn-eliminar-amigo"
+              style="margin-left:1rem;padding: 0.4rem 1rem; background: #e74c3c; color: white; border: none; border-radius: 8px; cursor: pointer;">
+              Eliminar amigo
+            </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if mostrar_datos %}
+      <!-- STATS -->
+      <div class="stats">
+        <div class="card">
+          <h3>Peso Actual</h3>
+          <p>{{ stats.peso or "N/A" }} kg</p>
+        </div>
+        <div class="card">
+          <h3>Entrenos Completados</h3>
+          <p>{{ stats.entrenos_completados or "N/A" }} sesiones</p>
+        </div>
+        <div class="card">
+          <h3>Días Activo en el Plan</h3>
+          <p>{{ stats.dias_activo or "N/A" }} días</p>
+        </div>
+        <div class="card">
+          <h3>Adherencia</h3>
+          <p>{{ stats.adherencia or "N/A" }}%</p>
+        </div>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <span id="tab-multimedia" class="active" onclick="cambiarTab('multimedia')">📸</span>
+        <span id="tab-dietas" onclick="cambiarTab('dietas')">🥗</span>
+        <span id="tab-entrenos" onclick="cambiarTab('entrenos')">🏋️</span>
+      </div>
+
+      <!-- MULTIMEDIA -->
+      <div id="contenido-multimedia" class="contenido-tab active">
+        {% if multimedia %}
+          <div class="grid-media">
+            {% for m in multimedia %}
+              <div class="media-card">
+                <img src="{{ m.imagen_url }}" alt="{{ m.descripcion }}">
+                {% if m.descripcion %}
+                  <p>{{ m.descripcion }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="muted">No has subido imágenes todavía.</p>
+        {% endif %}
+      </div>
+
+      <!-- DIETAS -->
+      <div id="contenido-dietas" class="contenido-tab">
+        {% if dieta %}
+          <h3>{{ dieta.nombre }}</h3>
+          <pre>{{ dieta.dieta_json | tojson(indent=2) }}</pre>
+        {% else %}
+          <p class="muted">No tienes ninguna dieta activa.</p>
+        {% endif %}
+      </div>
+
+      <!-- ENTRENOS -->
+      <div id="contenido-entrenos" class="contenido-tab">
+        {% if rutina %}
+          <h3>{{ rutina.nombre }}</h3>
+          <pre>{{ rutina.rutina_json | tojson(indent=2) }}</pre>
+        {% else %}
+          <p class="muted">No tienes ninguna rutina activa.</p>
+        {% endif %}
+      </div>
+      {% if gimnasio %}
+        <div class="card" style="margin: 2rem 0;">
+          <h3>Gimnasio afiliado</h3>
+          <p>🏋️ <a href="/gimnasio/{{ gimnasio.id }}">{{ gimnasio.nombre }}</a></p>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="privada-msg">
+        <span style="font-size:2rem;">🔒</span><br>
+        <b>Esta cuenta es privada.<br>Debes ser amigo para ver su contenido.</b>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- PANEL BUSCADOR LATERAL -->
+  <div id="buscadorLateral">
+    <h3>Buscar usuarios y gimnasios</h3>
+    <input type="text" id="inputBusqueda" placeholder="Escribe un nombre...">
+    <ul id="resultadosBusqueda"></ul>
+  </div>
+
+  <script>
+    function cambiarTab(tab) {
+      const tabs = ['multimedia', 'dietas', 'entrenos'];
+      tabs.forEach(id => {
+        document.getElementById('contenido-' + id).classList.toggle('active', id === tab);
+        document.getElementById('tab-' + id).classList.toggle('active', id === tab);
+      });
+    }
+    function abrirBuscador() {
+      document.getElementById("buscadorLateral").style.right = "0";
+      document.getElementById("inputBusqueda").focus();
+    }
+    document.addEventListener("click", function (e) {
+      const panel = document.getElementById("buscadorLateral");
+      if (!panel.contains(e.target) && !e.target.closest('a[href="#"]')) {
+        panel.style.right = "-400px";
+      }
+    });
+    document.getElementById("inputBusqueda").addEventListener("input", async function () {
+      const query = this.value.trim();
+      const resultados = document.getElementById("resultadosBusqueda");
+      resultados.innerHTML = "";
+      if (query.length === 0) return;
+      try {
+        const res = await fetch(`/api/buscar?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        data.forEach(item => {
+          const li = document.createElement("li");
+          li.innerHTML = `<a href="${item.url}">
+            <strong>${item.nombre}</strong> <span style="font-size:0.85rem;color:#999;">(${item.tipo})</span>
+          </a>`;
+          resultados.appendChild(li);
+        });
+      } catch (err) { console.error("Error de búsqueda:", err); }
+    });
+
+    // ---- BLOQUE AMIGOS AJAX ----
+    document.addEventListener("DOMContentLoaded", function () {
+      function actualizarEstadoAmistad(html) {
+        document.getElementById("amigos-contenedor").innerHTML = html;
+        bindAll();
+      }
+      function cancelarBtnHTML() {
+        return `<button id="btn-cancelar-amigo"
+          style="margin-left:1rem;padding: 0.4rem 1rem; background: #aaa; color: white; border: none; border-radius: 8px; cursor: pointer;">
+          Cancelar
+        </button>`;
+      }
+      function eliminarBtnHTML() {
+        return `<button id="btn-eliminar-amigo"
+          style="margin-left:1rem;padding: 0.4rem 1rem; background: #e74c3c; color: white; border: none; border-radius: 8px; cursor: pointer;">
+          Eliminar amigo
+        </button>`;
+      }
+      function bindAll() {
+        const btnAgregar = document.getElementById("btn-agregar-amigo");
+        if (btnAgregar) {
+          btnAgregar.addEventListener("click", async function () {
+            btnAgregar.disabled = true;
+            btnAgregar.textContent = "Enviando...";
+            const res = await fetch("/amigos/agregar-ajax", {
+              method: "POST",
+              headers: {"X-Requested-With": "XMLHttpRequest"},
+              body: new URLSearchParams({ amigo_id: "{{ usuario.id }}" })
+            });
+            const data = await res.json();
+            if (data.status === "ok") {
+              if (data.estado === "aceptado") {
+                actualizarEstadoAmistad('<span id="estado-amistad" style="color:#4caf50;">✔ Ya sois amigos</span>' + eliminarBtnHTML());
+              } else {
+                actualizarEstadoAmistad('<span id="estado-amistad" style="color:#888;">Solicitud de amistad pendiente</span>' + cancelarBtnHTML());
+              }
+            } else {
+              btnAgregar.disabled = false;
+              btnAgregar.textContent = "➕ Agregar Amigo";
+              alert(data.msg || "Error inesperado.");
+            }
+          });
+        }
+        const btnCancelar = document.getElementById("btn-cancelar-amigo");
+        if (btnCancelar) {
+          btnCancelar.addEventListener("click", async function () {
+            btnCancelar.disabled = true;
+            btnCancelar.textContent = "Procesando...";
+            const res = await fetch("/amistades/cancelar-ajax", {
+              method: "POST",
+              headers: {"X-Requested-With": "XMLHttpRequest"},
+              body: new URLSearchParams({ amigo_id: "{{ usuario.id }}" })
+            });
+            const data = await res.json();
+            if (data.status === "ok") {
+              actualizarEstadoAmistad(`<button id="btn-agregar-amigo"
+                style="padding: 0.4rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                ➕ Agregar Amigo
+              </button>`);
+            } else {
+              btnCancelar.disabled = false;
+              btnCancelar.textContent = "Cancelar";
+              alert(data.msg || "Error inesperado.");
+            }
+          });
+        }
+        const btnEliminar = document.getElementById("btn-eliminar-amigo");
+        if (btnEliminar) {
+          btnEliminar.addEventListener("click", async function () {
+            btnEliminar.disabled = true;
+            btnEliminar.textContent = "Eliminando...";
+            const res = await fetch("/amistades/cancelar-ajax", {
+              method: "POST",
+              headers: {"X-Requested-With": "XMLHttpRequest"},
+              body: new URLSearchParams({ amigo_id: "{{ usuario.id }}" })
+            });
+            const data = await res.json();
+            if (data.status === "ok") {
+              actualizarEstadoAmistad(`<button id="btn-agregar-amigo"
+                style="padding: 0.4rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                ➕ Agregar Amigo
+              </button>`);
+            } else {
+              btnEliminar.disabled = false;
+              btnEliminar.textContent = "Eliminar amigo";
+              alert(data.msg || "Error inesperado.");
+            }
+          });
+        }
+      }
+      bindAll();
+    });
+    // ---- FIN BLOQUE AMIGOS AJAX ----
+  </script>
+</body>
+</html>
+
+
+

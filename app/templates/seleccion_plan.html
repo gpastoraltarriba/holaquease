@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Selecciona tu objetivo</title>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 400px;
+    }
+    h2 {
+      margin-bottom: 1.5rem;
+    }
+    button {
+      display: block;
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.9rem;
+      background-color: #667eea;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>¿Cuál es tu objetivo?</h2>
+    <form method="post" action="/seleccion-plan">
+      <button type="submit" name="opcion" value="entreno">Solo Entrenamiento</button>
+      <button type="submit" name="opcion" value="dieta">Solo Dieta</button>
+      <button type="submit" name="opcion" value="mixto">Mixto</button>
+    </form>
+  </div>
+</body>
+</html>

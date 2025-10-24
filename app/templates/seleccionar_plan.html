@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Seleccionar tipo de plan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f4f6fc;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      background: white;
+      padding: 2.5rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 2rem;
+      color: #333;
+    }
+    .option-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .option-grid a {
+      display: block;
+      padding: 1rem 1.5rem;
+      background-color: #667eea;
+      color: white;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+    .option-grid a:hover {
+      background-color: #5a67d8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>¿Qué tipo de plan quieres crear?</h2>
+    <div class="option-grid">
+      <a href="/formulario-entreno">Plan de Entrenamiento</a>
+      <a href="/formulario-dieta">Plan de Dieta</a>
+      <a href="/formulario-mixto">Plan Mixto</a>
+    </div>
+  </div>
+
+</body>
+</html>
