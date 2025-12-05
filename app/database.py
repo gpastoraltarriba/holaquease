@@ -1,27 +1,45 @@
+# database.py - VERSIÓN CORREGIDA
 import os
-from pathlib import Path
-from urllib.parse import quote_plus
 from dotenv import load_dotenv
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+import ssl
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent.parent  # ajusta si es necesario
-load_dotenv(BASE_DIR / ".env")
+class Base(DeclarativeBase):
+    pass
 
-raw_url = os.getenv("DATABASE_URL")
-if not raw_url:
-    raise RuntimeError("DATABASE_URL no está definido (revisa tu .env)")
+# URL de conexión CON asyncpg
+DATABASE_URL = "postgresql+asyncpg://postgres.whkclbhcvpxfbaznkcvm:Antwtocumpo@aws-0-eu-west-3.pooler.supabase.com:6543/postgres"
 
+print("🚀 Conectando con asyncpg...")
+
+# Configuración SSL para asyncpg
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
+# Engine CON asyncpg - VERSIÓN CORREGIDA
 engine = create_async_engine(
-    raw_url,
-    echo=False,
+    DATABASE_URL,
     pool_pre_ping=True,
+    echo=True,
+    connect_args={
+        "ssl": ssl_context,
+        "prepared_statement_cache_size": 0,  # ✅ SOLUCIÓN AL ERROR
+        "statement_cache_size": 0,           # ✅ SOLUCIÓN ALTERNATIVA
+    },
+    pool_size=5,
+    max_overflow=10,
 )
 
-AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
-Base = declarative_base()
+SessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 async def get_db():
-    async with AsyncSessionLocal() as session:
+    async with SessionLocal() as session:
         yield session

@@ -3,6 +3,9 @@
 # ───────────────────────────────
 import os
 import re
+from datetime import datetime, date, timedelta  # <-- Añadir timedelta
+import datetime as _dt
+from app.utils import analizar_nutricion_imagen
 from pydantic import ValidationError
 import json
 from sqlalchemy import inspect as sa_inspect  # ← evita conflicto con stdlib
@@ -16,7 +19,7 @@ from types import SimpleNamespace
 from statistics import mean
 from math import isfinite
 from datetime import datetime, date
-import datetime as _dt
+import datetime as dt
 from pathlib import Path
 
 # ───────────────────────────────
@@ -28,7 +31,11 @@ from passlib.context import CryptContext
 import aiohttp
 import openai
 from openai import AsyncOpenAI
+# En main.py, cambia esta línea:
+from sqlalchemy import select, insert, update
 
+# Por esta:
+from sqlalchemy import select, insert, update, func  # <-- AÑADIR func
 # ───────────────────────────────
 # ⚙️ FastAPI / Starlette
 # ───────────────────────────────
@@ -47,19 +54,19 @@ from fastapi.security import OAuth2PasswordRequestForm
 # 🧠 SQLAlchemy
 # ───────────────────────────────
 from sqlalchemy import select, insert, update
-# ⚠️ No importes create_async_engine aquí. Lo gestiona app.database.
-# from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.ext.asyncio import AsyncSession  # si lo necesitas para Depends
+from sqlalchemy.ext.asyncio import AsyncSession  # para Depends
 
 # ───────────────────────────────
 # 🧱 App interna
 # ───────────────────────────────
-# Carga .env ANTES de tocar app.database
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+
+# ⬅️ IMPORTANTE: tu .env está en la raíz del proyecto, no dentro de /app
+# por eso cargamos: BASE_DIR.parent /".env"
+load_dotenv(BASE_DIR.parent / ".env")
 
 from app import models, crud, schemas
-from app.database import engine, Base, get_db  # ← usa el engine ASYNC ya configurado
+from app.database import engine, Base, get_db  # engine ASYNC ya configurado
 from app.models import (
     Usuario, Gimnasio, UsuarioGimnasio, SesionEntreno, RegistroComida,
     Entrenamiento, Plan, UsuarioPlan, Dieta, InfraestructuraGimnasio,
@@ -115,9 +122,11 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # ───────────────────────────────
 from sqlalchemy.engine.url import make_url
 
+from sqlalchemy.engine.url import make_url
+from app.database import engine, Base
+
 @app.on_event("startup")
-async def startup() -> None:
-    # Log de sanity check del DSN (sin password)
+async def startup():
     dsn = os.getenv("DATABASE_URL", "")
     try:
         url = make_url(dsn) if dsn else None
@@ -131,15 +140,11 @@ async def startup() -> None:
     except Exception as e:
         logger.warning("No se pudo parsear DATABASE_URL: %s", e)
 
-    # (Opcional) crear tablas si no existen
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("DB OK: metadata revisada/creada")
-    except Exception as e:
-        logger.exception("Fallo al conectar/crear tablas en startup: %s", e)
-        # Re-lanza si quieres abortar el arranque:
-        # raise
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("DB OK: metadata revisada/creada")
+
+
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
@@ -447,12 +452,17 @@ async def mostrar_login(request: Request):
     logger.info("GET /login solicitado")
     return templates.TemplateResponse("login.html", {"request": request})
 
+
+# ───────────────────────────────
+# 🔐 Modificación del Login
+# ───────────────────────────────
+
 @app.post("/login", response_class=HTMLResponse)
 async def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    db: AsyncSession = Depends(get_db)
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(...),
+        db: AsyncSession = Depends(get_db)
 ):
     logger.info(f"Intento de login: {username}")
     try:
@@ -480,10 +490,16 @@ async def login(
         }
         token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
 
-        # ¿El usuario ya tiene formulario?
-        formulario = await crud.get_formulario_por_usuario(db, usuario.id)
-        url_destino = "/seleccion-plan" if not formulario else "/usuarios"
-        logger.info(f"Login exitoso. Redirigiendo a: {url_destino}")
+        # ─── NUEVA LÓGICA DE REDIRECCIÓN SEGÚN ROL ───
+        if usuario.rol == "gimnasio":
+            # Gimnasio: ir directamente al dashboard profesional
+            url_destino = "/panel-gimnasio"
+            logger.info(f"Login gimnasio exitoso. Redirigiendo a: {url_destino}")
+        else:
+            # Cliente/Usuario normal: verificar formulario
+            formulario = await crud.get_formulario_por_usuario(db, usuario.id)
+            url_destino = "/seleccion-plan" if not formulario else "/usuarios"
+            logger.info(f"Login cliente exitoso. Redirigiendo a: {url_destino}")
 
         response = RedirectResponse(url=url_destino, status_code=303)
         response.set_cookie(
@@ -493,7 +509,6 @@ async def login(
             max_age=1800,
             path="/",
             samesite="Lax",
-            # domain="127.0.0.1",  # Solo si tienes problemas locales
         )
         logger.info("Cookie establecida correctamente")
         return response
@@ -507,6 +522,9 @@ async def login(
         )
 
 
+# ───────────────────────────────
+# 🏢 Panel Gimnasio (Nuevo Endpoint)
+# ───────────────────────────────
 @app.get("/registro", response_class=HTMLResponse)
 async def mostrar_registro(request: Request):
     return templates.TemplateResponse("registro.html", {"request": request})
@@ -520,18 +538,34 @@ async def registro(request: Request,
                    password: str = Form(...),
                    confirm_password: str = Form(...),
                    db: AsyncSession = Depends(get_db)):
+    # Validar que el rol sea válido
+    if rol not in ["cliente", "gimnasio"]:
+        return templates.TemplateResponse("registro.html", {
+            "request": request,
+            "error": "Tipo de cuenta no válido"
+        })
+
     if password != confirm_password:
-        return templates.TemplateResponse("registro.html",
-                                          {"request": request, "error": "Las contraseñas no coinciden"})
+        return templates.TemplateResponse("registro.html", {
+            "request": request,
+            "error": "Las contraseñas no coinciden"
+        })
 
     usuario_existe = await crud.get_usuario_por_email(db, email)
     if usuario_existe:
-        return templates.TemplateResponse("registro.html", {"request": request, "error": "Email ya registrado"})
+        return templates.TemplateResponse("registro.html", {
+            "request": request,
+            "error": "Email ya registrado"
+        })
 
-    usuario_data = schemas.UsuarioCreate(email=email, nombre=nombre, contraseña=password, rol=rol)
+    usuario_data = schemas.UsuarioCreate(
+        email=email,
+        nombre=nombre,
+        contraseña=password,
+        rol=rol
+    )
     await crud.crear_usuario(db, usuario_data)
     return RedirectResponse(url="/login", status_code=302)
-
 
 @app.get("/usuarios", response_class=HTMLResponse)
 async def leer_usuarios(
@@ -1373,27 +1407,6 @@ async def unirse_a_gimnasio(
     await db.commit()
     return {"mensaje": "Unido correctamente"}
 
-@app.get("/profesionales", response_class=HTMLResponse)
-async def listar_profesionales(
-    request: Request,
-    tipo: str,  # "entrenador" o "dietista"
-    user=Depends(role_required(["cliente"])),
-    db: AsyncSession = Depends(get_db)
-):
-    if tipo not in ["entrenador", "dietista"]:
-        raise HTTPException(status_code=400, detail="Tipo de profesional no válido")
-
-    result = await db.execute(
-        select(Usuario).where(Usuario.rol == tipo)
-    )
-    profesionales = result.scalars().all()
-
-    return templates.TemplateResponse("profesionales.html", {
-        "request": request,
-        "profesionales": profesionales,
-        "tipo": tipo.capitalize()
-    })
-
 @app.post("/profesionales/unirse")
 async def unirse_a_profesional(
     profesional_id: int = Form(...),
@@ -1422,41 +1435,109 @@ async def unirse_a_profesional(
 
     return {"mensaje": f"Te has unido a {tipo} correctamente"}
 
+
 @app.get("/explorar", response_class=HTMLResponse)
 async def explorar(
-    request: Request,
-    seccion: str = "gimnasios",
-    q: str = "",
-    user=Depends(role_required(["cliente"])),
-    db: AsyncSession = Depends(get_db)
+        request: Request,
+        seccion: str = "gimnasios",
+        q: str = "",
+        user=Depends(role_required(["cliente"])),
+        db: AsyncSession = Depends(get_db)
 ):
     resultados = []
 
-    if seccion == "gimnasios":
-        result = await db.execute(select(models.Gimnasio))
-        resultados = result.scalars().all()
+    try:
+        if seccion == "gimnasios":
+            if q:
+                result = await db.execute(
+                    select(models.Gimnasio).where(
+                        models.Gimnasio.nombre.ilike(f"%{q}%")
+                    )
+                )
+            else:
+                result = await db.execute(select(models.Gimnasio))
+            gimnasios = result.scalars().all()
 
-    elif seccion == "profesionales":
-        result = await db.execute(
-            select(Usuario).where(Usuario.rol.in_(["entrenador", "dietista"]))
-        )
-        resultados = result.scalars().all()
+            # Verificar uniones para cada gimnasio
+            for gimnasio in gimnasios:
+                union_result = await db.execute(
+                    select(models.UsuarioGimnasio).where(
+                        models.UsuarioGimnasio.usuario_id == user["id"],
+                        models.UsuarioGimnasio.gimnasio_id == gimnasio.id
+                    )
+                )
+                gimnasio.unido = union_result.scalar_one_or_none() is not None
 
-    elif seccion == "amigos":
-        stmt = select(Usuario).where(
-            Usuario.rol == "cliente",
-            Usuario.id != user["id"]
-        )
-        if q:
-            stmt = stmt.where(Usuario.nombre.ilike(f"%{q}%") | Usuario.email.ilike(f"%{q}%"))
+            resultados = gimnasios
 
-        result = await db.execute(stmt)
-        resultados = result.scalars().all()
+        elif seccion == "profesionales":
+            if q:
+                result = await db.execute(
+                    select(models.Usuario).where(
+                        models.Usuario.rol.in_(["entrenador", "dietista"]),
+                        models.Usuario.nombre.ilike(f"%{q}%")
+                    )
+                )
+            else:
+                result = await db.execute(
+                    select(models.Usuario).where(
+                        models.Usuario.rol.in_(["entrenador", "dietista"])
+                    )
+                )
+            profesionales = result.scalars().all()
+
+            # Verificar seguimiento para cada profesional
+            for prof in profesionales:
+                seguimiento_result = await db.execute(
+                    select(models.UsuarioProfesional).where(
+                        models.UsuarioProfesional.usuario_id == user["id"],
+                        models.UsuarioProfesional.profesional_id == prof.id
+                    )
+                )
+                prof.seguido = seguimiento_result.scalar_one_or_none() is not None
+
+            resultados = profesionales
+
+        elif seccion == "amigos":
+            # Buscar otros clientes (excluyendo al usuario actual)
+            stmt = select(models.Usuario).where(
+                models.Usuario.rol == "cliente",
+                models.Usuario.id != user["id"]
+            )
+            if q:
+                stmt = stmt.where(
+                    models.Usuario.nombre.ilike(f"%{q}%") |
+                    models.Usuario.email.ilike(f"%{q}%")
+                )
+
+            result = await db.execute(stmt)
+            usuarios = result.scalars().all()
+
+            # Verificar estado de amistad para cada usuario
+            for usuario in usuarios:
+                amistad_result = await db.execute(
+                    select(models.Amistad).where(
+                        ((models.Amistad.usuario_id == user["id"]) & (models.Amistad.amigo_id == usuario.id)) |
+                        ((models.Amistad.usuario_id == usuario.id) & (models.Amistad.amigo_id == user["id"]))
+                    )
+                )
+                amistad = amistad_result.scalar_one_or_none()
+
+                if amistad:
+                    usuario.estado_amistad = amistad.estado
+                else:
+                    usuario.estado_amistad = "no_amigos"
+
+            resultados = usuarios
+
+    except Exception as e:
+        logger.error(f"Error en explorar: {e}")
 
     return templates.TemplateResponse("explorar.html", {
         "request": request,
         "seccion": seccion,
-        "resultados": resultados
+        "resultados": resultados,
+        "query": q
     })
 
 @app.post("/unirse-gimnasio")
@@ -1889,35 +1970,106 @@ async def sustituir_ejercicio(request: Request, db: AsyncSession = Depends(get_d
 
 
 @app.get("/api/buscar")
-async def buscar_global(q: str, db: AsyncSession = Depends(get_db)):
-    q = q.lower()
+async def buscar_global(
+        q: str,
+        db: AsyncSession = Depends(get_db),
+        user=Depends(get_current_user)  # Añadir el usuario actual
+):
+    if not q or len(q.strip()) < 2:
+        return []
 
+    q = q.strip().lower()
     resultados = []
 
-    # Buscar usuarios (clientes, entrenadores, dietistas)
-    res_usuarios = await db.execute(
-        select(Usuario).where(Usuario.nombre.ilike(f"%{q}%")).limit(50)
-    )
-    for u in res_usuarios.scalars().all():
-        resultados.append({
-            "nombre": u.nombre,
-            "tipo": u.rol,
-            "url": f"/perfil/{u.id}"  # Asegúrate de tener esta ruta implementada
-        })
+    try:
+        # Buscar usuarios (solo clientes para amistad)
+        res_usuarios = await db.execute(
+            select(models.Usuario).where(
+                models.Usuario.nombre.ilike(f"%{q}%"),
+                models.Usuario.rol == "cliente",  # Solo buscar otros clientes
+                models.Usuario.id != user["id"]  # Excluir al usuario actual
+            ).limit(20)
+        )
 
-    # Buscar gimnasios
-    res_gym = await db.execute(
-        select(models.Gimnasio).where(models.Gimnasio.nombre.ilike(f"%{q}%")).limit(50)
-    )
-    for g in res_gym.scalars().all():
-        resultados.append({
-            "nombre": g.nombre,
-            "tipo": "Gimnasio",
-            "url": f"/gimnasio/{g.id}"
-        })
+        for u in res_usuarios.scalars().all():
+            # Verificar si ya son amigos
+            amistad_result = await db.execute(
+                select(models.Amistad).where(
+                    ((models.Amistad.usuario_id == user["id"]) & (models.Amistad.amigo_id == u.id)) |
+                    ((models.Amistad.usuario_id == u.id) & (models.Amistad.amigo_id == user["id"]))
+                )
+            )
+            amistad = amistad_result.scalar_one_or_none()
 
-    return resultados[:50]  # máximo 50 resultados combinados
+            estado_amistad = "no_amigos"
+            if amistad:
+                estado_amistad = amistad.estado  # "pendiente" o "aceptado"
 
+            resultados.append({
+                "id": u.id,
+                "nombre": u.nombre,
+                "email": u.email,
+                "tipo": "Usuario",
+                "imagen_url": u.imagen_url or DEFAULT_AVATAR_REL,
+                "estado_amistad": estado_amistad,
+                "url": f"/perfil/{u.id}"
+            })
+
+        # Buscar gimnasios
+        res_gym = await db.execute(
+            select(models.Gimnasio).where(
+                models.Gimnasio.nombre.ilike(f"%{q}%")
+            ).limit(20)
+        )
+        for g in res_gym.scalars().all():
+            # Verificar si el usuario ya está unido a este gimnasio
+            union_result = await db.execute(
+                select(models.UsuarioGimnasio).where(
+                    models.UsuarioGimnasio.usuario_id == user["id"],
+                    models.UsuarioGimnasio.gimnasio_id == g.id
+                )
+            )
+            unido = union_result.scalar_one_or_none() is not None
+
+            resultados.append({
+                "id": g.id,
+                "nombre": g.nombre,
+                "tipo": "Gimnasio",
+                "unido": unido,
+                "url": f"/gimnasio/{g.id}"
+            })
+
+        # Buscar profesionales (entrenadores y dietistas)
+        res_profesionales = await db.execute(
+            select(models.Usuario).where(
+                models.Usuario.nombre.ilike(f"%{q}%"),
+                models.Usuario.rol.in_(["entrenador", "dietista"])
+            ).limit(20)
+        )
+        for p in res_profesionales.scalars().all():
+            # Verificar si el usuario ya sigue a este profesional
+            profesional_result = await db.execute(
+                select(models.UsuarioProfesional).where(
+                    models.UsuarioProfesional.usuario_id == user["id"],
+                    models.UsuarioProfesional.profesional_id == p.id
+                )
+            )
+            seguido = profesional_result.scalar_one_or_none() is not None
+
+            resultados.append({
+                "id": p.id,
+                "nombre": p.nombre,
+                "tipo": p.rol.capitalize(),
+                "seguido": seguido,
+                "imagen_url": p.imagen_url or DEFAULT_AVATAR_REL,
+                "url": f"/profesional/{p.id}"
+            })
+
+    except Exception as e:
+        logger.error(f"Error en búsqueda: {e}")
+        return []
+
+    return resultados[:50]
 
 @app.get("/perfil/{id}", response_class=HTMLResponse)
 async def ver_perfil_usuario(
@@ -2812,3 +2964,607 @@ async def ver_detalle_dieta(
         "DAY_ORDER": DAY_ORDER,
     })
 
+
+# --- REGISTRO DE COMIDAS Y NUTRICIÓN ---
+
+@app.post("/registrar-comida")
+async def registrar_comida(
+        imagen: UploadFile = File(...),
+        descripcion: str = Form(""),
+        tipo_comida: str = Form("otro"),
+        usar_ia: bool = Form(False),
+        calorias: int = Form(None),
+        proteinas_g: float = Form(None),
+        carbohidratos_g: float = Form(None),
+        grasas_g: float = Form(None),
+        db: AsyncSession = Depends(get_db),
+        user=Depends(role_required(["cliente"]))
+):
+    """Registra una comida con opción de análisis automático por IA"""
+
+    # Guardar imagen
+    filename = f"comida_{datetime.now().strftime('%Y%m%d%H%M%S')}_{imagen.filename}"
+    filepath = UPLOAD_DIR / filename
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(imagen.file, buffer)
+
+    imagen_url = f"/static/uploads/{filename}"
+
+    registro_data = {
+        "usuario_id": user["id"],
+        "imagen_url": imagen_url,
+        "descripcion": descripcion,
+        "tipo_comida": tipo_comida,
+        "fecha": datetime.now()
+    }
+
+    # Análisis por IA si se solicita
+    if usar_ia:
+        try:
+            analisis = await analizar_nutricion_imagen(imagen_url, descripcion)
+            registro_data.update({
+                "calorias": analisis.get("calorias"),
+                "proteinas_g": analisis.get("proteinas_g"),
+                "carbohidratos_g": analisis.get("carbohidratos_g"),
+                "grasas_g": analisis.get("grasas_g"),
+                "fibra_g": analisis.get("fibra_g"),
+                "azucar_g": analisis.get("azucar_g"),
+                "es_automatico": True,
+                "analisis_json": analisis
+            })
+        except Exception as e:
+            logger.error(f"Error en análisis IA: {e}")
+            # Continuar sin datos de IA
+    else:
+        # Datos manuales
+        registro_data.update({
+            "calorias": calorias,
+            "proteinas_g": proteinas_g,
+            "carbohidratos_g": carbohidratos_g,
+            "grasas_g": grasas_g,
+            "es_automatico": False,
+            "analisis_json": {}
+        })
+
+    registro = models.RegistroComida(**registro_data)
+    db.add(registro)
+    await db.commit()
+    await db.refresh(registro)
+
+    return JSONResponse({
+        "mensaje": "Comida registrada correctamente",
+        "id": registro.id,
+        "es_automatico": registro_data["es_automatico"]
+    })
+
+
+@app.get("/mis-comidas")
+async def ver_mis_comidas(
+        request: Request,
+        fecha: str = Query(None),  # Filtro por fecha YYYY-MM-DD
+        db: AsyncSession = Depends(get_db),
+        user=Depends(role_required(["cliente"]))  # Cambiado de usuario_actual a user
+):
+    """Muestra el historial de comidas del usuario"""
+    usuario_id = user["id"]
+
+    # Obtener objeto usuario para el template
+    usuario_obj = await db.get(models.Usuario, usuario_id)
+    if not usuario_obj or not getattr(usuario_obj, "imagen_url", None):
+        from types import SimpleNamespace
+        DEFAULT_AVATAR_REL = "uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png"
+        usuario_obj = usuario_obj or SimpleNamespace(nombre="Tu perfil", imagen_url=DEFAULT_AVATAR_REL)
+        if getattr(usuario_obj, "imagen_url", None) is None:
+            setattr(usuario_obj, "imagen_url", DEFAULT_AVATAR_REL)
+
+    query = select(models.RegistroComida).where(
+        models.RegistroComida.usuario_id == usuario_id
+    )
+
+    if fecha:
+        fecha_obj = datetime.strptime(fecha, "%Y-%m-%d").date()
+        query = query.where(
+            func.date(models.RegistroComida.fecha) == fecha_obj
+        )
+
+    query = query.order_by(models.RegistroComida.fecha.desc())
+
+    result = await db.execute(query)
+    comidas = result.scalars().all()
+
+    # Calcular totales del día si se filtra por fecha
+    totales = {}
+    if fecha:
+        total_calorias = sum(c.calorias or 0 for c in comidas)
+        total_proteinas = sum(c.proteinas_g or 0 for c in comidas)
+        total_carbohidratos = sum(c.carbohidratos_g or 0 for c in comidas)
+        total_grasas = sum(c.grasas_g or 0 for c in comidas)
+
+        totales = {
+            "calorias": total_calorias,
+            "proteinas_g": total_proteinas,
+            "carbohidratos_g": total_carbohidratos,
+            "grasas_g": total_grasas
+        }
+
+    return templates.TemplateResponse("mis_comidas.html", {
+        "request": request,
+        "usuario": usuario_obj,  # Cambiado de usuario_actual a usuario_obj
+        "gimnasio_principal": None,
+        "num_noti_noleidas": 0,
+        "DEFAULT_AVATAR_REL": DEFAULT_AVATAR_REL,
+        "comidas": comidas,
+        "totales": totales,
+        "fecha_filtro": fecha
+    })
+
+@app.get("/estadisticas-nutricion")
+async def estadisticas_nutricion(
+        request: Request,
+        rango: str = Query("7d"),  # 7d, 30d, 3m, 1y
+        db: AsyncSession = Depends(get_db),
+        user=Depends(role_required(["cliente"]))
+):
+    """Endpoint para gráficas de nutrición"""
+    usuario_id = user["id"]
+
+    # Calcular fecha de inicio según rango
+    hoy = datetime.now().date()
+    if rango == "7d":
+        inicio = hoy - timedelta(days=6)
+    elif rango == "30d":
+        inicio = hoy - timedelta(days=29)
+    elif rango == "3m":
+        inicio = hoy - timedelta(days=89)
+    else:  # 1y
+        inicio = hoy - timedelta(days=365)
+
+    # Obtener datos agregados por día - CORREGIR ESTA PARTE
+    # En lugar de text() raw SQL, usemos SQLAlchemy ORM
+    stmt = select(
+        func.date(models.RegistroComida.fecha).label("dia"),
+        func.sum(models.RegistroComida.calorias).label("total_calorias"),
+        func.sum(models.RegistroComida.proteinas_g).label("total_proteinas"),
+        func.sum(models.RegistroComida.carbohidratos_g).label("total_carbohidratos"),
+        func.sum(models.RegistroComida.grasas_g).label("total_grasas")
+    ).where(
+        models.RegistroComida.usuario_id == usuario_id,
+        func.date(models.RegistroComida.fecha) >= inicio,
+        func.date(models.RegistroComida.fecha) <= hoy
+    ).group_by(
+        func.date(models.RegistroComida.fecha)
+    ).order_by("dia")
+
+    result = await db.execute(stmt)
+    datos = result.all()
+
+    # Preparar datos para gráficas
+    labels = [d.dia.strftime("%d/%m") for d in datos]
+    calorias_data = [float(d.total_calorias or 0) for d in datos]
+    proteinas_data = [float(d.total_proteinas or 0) for d in datos]
+    carbohidratos_data = [float(d.total_carbohidratos or 0) for d in datos]
+    grasas_data = [float(d.total_grasas or 0) for d in datos]
+
+    return JSONResponse({
+        "labels": labels,
+        "datasets": {
+            "calorias": calorias_data,
+            "proteinas": proteinas_data,
+            "carbohidratos": carbohidratos_data,
+            "grasas": grasas_data
+        }
+    })
+
+@app.get("/adherencia-dieta")
+async def calcular_adherencia_dieta(
+        fecha: str = Query(None),  # YYYY-MM-DD
+        db: AsyncSession = Depends(get_db),
+        user=Depends(role_required(["cliente"]))
+):
+    """Calcula adherencia a la dieta activa del usuario"""
+    usuario_id = user["id"]
+
+    # Obtener dieta activa del usuario
+    dieta_result = await db.execute(
+        select(models.Dieta)
+        .where(models.Dieta.usuario_id == usuario_id)
+        .order_by(models.Dieta.fecha_creacion.desc())
+        .limit(1)
+    )
+    dieta = dieta_result.scalar_one_or_none()
+
+    if not dieta:
+        return JSONResponse({
+            "tiene_dieta": False,
+            "mensaje": "No tienes una dieta activa"
+        })
+
+    # Obtener consumo del día
+    fecha_consulta = datetime.strptime(fecha, "%Y-%m-%d").date() if fecha else datetime.now().date()
+
+    consumo_result = await db.execute(
+        select(models.RegistroComida)
+        .where(
+            models.RegistroComida.usuario_id == usuario_id,
+            func.date(models.RegistroComida.fecha) == fecha_consulta
+        )
+    )
+    comidas_dia = consumo_result.scalars().all()
+
+    # Calcular totales consumidos
+    total_consumido = {
+        "calorias": sum(c.calorias or 0 for c in comidas_dia),
+        "proteinas_g": sum(c.proteinas_g or 0 for c in comidas_dia),
+        "carbohidratos_g": sum(c.carbohidratos_g or 0 for c in comidas_dia),
+        "grasas_g": sum(c.grasas_g or 0 for c in comidas_dia)
+    }
+
+    # Extraer objetivos de la dieta (necesitarías ajustar según tu estructura JSON)
+    dieta_json = dieta.dieta_json or {}
+    objetivos = dieta_json.get("objetivos_nutricionales", {})
+
+    # Calcular porcentajes de adherencia
+    adherencia = {}
+    for nutriente in ["calorias", "proteinas_g", "carbohidratos_g", "grasas_g"]:
+        objetivo = objetivos.get(nutriente, 1)  # Evitar división por cero
+        consumido = total_consumido.get(nutriente, 0)
+
+        if objetivo > 0:
+            porcentaje = min(100, (consumido / objetivo) * 100)
+        else:
+            porcentaje = 0
+
+        adherencia[nutriente] = {
+            "consumido": consumido,
+            "objetivo": objetivo,
+            "porcentaje": round(porcentaje, 1),
+            "cumplido": porcentaje >= 80  # 80% como mínimo de cumplimiento
+        }
+
+    return JSONResponse({
+        "tiene_dieta": True,
+        "fecha": fecha_consulta.isoformat(),
+        "adherencia": adherencia,
+        "comidas_registradas": len(comidas_dia)
+    })
+
+
+# ───────────────────────────────
+# 🏢 Panel Gimnasio - Rutas
+# ───────────────────────────────
+
+@app.get("/panel-gimnasio", response_class=HTMLResponse)
+async def panel_gimnasio(
+        request: Request,
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    logger.info(f"Acceso a /panel-gimnasio por: {user['email']}")
+
+    # Obtener datos del gimnasio para el template
+    gimnasio = await db.get(models.Usuario, user["id"])
+
+    # Obtener estadísticas para el dashboard
+    # Clientes activos
+    result_clientes = await db.execute(
+        select(func.count(models.UsuarioGimnasio.usuario_id))
+        .where(models.UsuarioGimnasio.gimnasio_id == user["id"])
+    )
+    clientes_activos = result_clientes.scalar() or 0
+
+    # Peticiones pendientes (necesitarías crear esta tabla)
+    result_peticiones = await db.execute(
+        select(func.count(models.PeticionPlan.id))
+        .where(
+            models.PeticionPlan.gimnasio_id == user["id"],
+            models.PeticionPlan.estado == "pendiente"
+        )
+    )
+    peticiones_pendientes = result_peticiones.scalar() or 0
+
+    # Productos activos (necesitarías crear esta tabla)
+    result_productos = await db.execute(
+        select(func.count(models.ProductoGimnasio.id))
+        .where(
+            models.ProductoGimnasio.gimnasio_id == user["id"],
+            models.ProductoGimnasio.activo == True
+        )
+    )
+    productos_activos = result_productos.scalar() or 0
+
+    # Peticiones recientes
+    result_peticiones_recientes = await db.execute(
+        select(models.PeticionPlan)
+        .where(models.PeticionPlan.gimnasio_id == user["id"])
+        .order_by(models.PeticionPlan.fecha_creacion.desc())
+        .limit(5)
+    )
+    peticiones_recientes = result_peticiones_recientes.scalars().all()
+
+    # Clientes recientes
+    result_clientes_recientes = await db.execute(
+        select(models.Usuario)
+        .join(models.UsuarioGimnasio, models.UsuarioGimnasio.usuario_id == models.Usuario.id)
+        .where(models.UsuarioGimnasio.gimnasio_id == user["id"])
+        .order_by(models.UsuarioGimnasio.fecha_registro.desc())
+        .limit(5)
+    )
+    clientes_recientes = result_clientes_recientes.scalars().all()
+
+    return templates.TemplateResponse("usuario_profesional.html", {
+        "request": request,
+        "gimnasio": gimnasio,
+        "clientes_activos": clientes_activos,
+        "peticiones_pendientes": peticiones_pendientes,
+        "productos_activos": productos_activos,
+        "ingresos_mensuales": 0,  # Placeholder - necesitarías lógica de pagos
+        "peticiones_recientes": peticiones_recientes,
+        "clientes_recientes": clientes_recientes,
+        "DEFAULT_AVATAR_REL": DEFAULT_AVATAR_REL
+    })
+
+
+# ───────────────────────────────
+# 🏗️ Infraestructura del Gimnasio
+# ───────────────────────────────
+
+@app.get("/panel-gimnasio/infraestructura", response_class=HTMLResponse)
+async def panel_gimnasio_infraestructura(
+        request: Request,
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    gimnasio = await db.get(models.Usuario, user["id"])
+
+    # Obtener infraestructura del gimnasio
+    result_maquinas = await db.execute(
+        select(models.InfraestructuraGimnasio)
+        .where(models.InfraestructuraGimnasio.gimnasio_id == user["id"])
+        .order_by(models.InfraestructuraGimnasio.fecha_subida.desc())
+    )
+    maquinas = result_maquinas.scalars().all()
+
+    return templates.TemplateResponse("gimnasio_infraestructura.html", {
+        "request": request,
+        "gimnasio": gimnasio,
+        "maquinas": maquinas,
+        "DEFAULT_AVATAR_REL": DEFAULT_AVATAR_REL
+    })
+
+
+@app.post("/panel-gimnasio/infraestructura/agregar")
+async def agregar_infraestructura(
+        request: Request,
+        nombre: str = Form(...),
+        tipo: str = Form(...),
+        descripcion: str = Form(None),
+        estado: str = Form("activo"),
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    nueva_maquina = models.InfraestructuraGimnasio(
+        gimnasio_id=user["id"],
+        nombre_maquina=nombre,
+        tipo=tipo,
+        descripcion=descripcion,
+        estado=estado,
+        fecha_subida=datetime.now()
+    )
+    db.add(nueva_maquina)
+    await db.commit()
+
+    return RedirectResponse(url="/panel-gimnasio/infraestructura", status_code=303)
+
+
+# ───────────────────────────────
+# 📋 Peticiones de Planes
+# ───────────────────────────────
+
+@app.get("/panel-gimnasio/peticiones", response_class=HTMLResponse)
+async def panel_gimnasio_peticiones(
+        request: Request,
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    gimnasio = await db.get(models.Usuario, user["id"])
+
+    # Obtener peticiones pendientes
+    result_peticiones = await db.execute(
+        select(models.PeticionPlan)
+        .where(models.PeticionPlan.gimnasio_id == user["id"])
+        .order_by(models.PeticionPlan.fecha_creacion.desc())
+    )
+    peticiones = result_peticiones.scalars().all()
+
+    return templates.TemplateResponse("gimnasio_peticiones.html", {
+        "request": request,
+        "gimnasio": gimnasio,
+        "peticiones": peticiones,
+        "DEFAULT_AVATAR_REL": DEFAULT_AVATAR_REL
+    })
+
+
+# ───────────────────────────────
+# 🛍️ Productos del Gimnasio
+# ───────────────────────────────
+
+@app.get("/panel-gimnasio/productos", response_class=HTMLResponse)
+async def panel_gimnasio_productos(
+        request: Request,
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    gimnasio = await db.get(models.Usuario, user["id"])
+
+    # Obtener productos del gimnasio
+    result_productos = await db.execute(
+        select(models.ProductoGimnasio)
+        .where(models.ProductoGimnasio.gimnasio_id == user["id"])
+        .order_by(models.ProductoGimnasio.fecha_creacion.desc())
+    )
+    productos = result_productos.scalars().all()
+
+    return templates.TemplateResponse("gimnasio_productos.html", {
+        "request": request,
+        "gimnasio": gimnasio,
+        "productos": productos,
+        "DEFAULT_AVATAR_REL": DEFAULT_AVATAR_REL
+    })
+
+
+# ───────────────────────────────
+# 👥 Gestión de Clientes
+# ───────────────────────────────
+
+@app.get("/panel-gimnasio/clientes", response_class=HTMLResponse)
+async def panel_gimnasio_clientes(
+        request: Request,
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    gimnasio = await db.get(models.Usuario, user["id"])
+
+    # Obtener clientes del gimnasio
+    result_clientes = await db.execute(
+        select(models.Usuario)
+        .join(models.UsuarioGimnasio, models.UsuarioGimnasio.usuario_id == models.Usuario.id)
+        .where(models.UsuarioGimnasio.gimnasio_id == user["id"])
+        .order_by(models.Usuario.nombre)
+    )
+    clientes = result_clientes.scalars().all()
+
+    return templates.TemplateResponse("gimnasio_clientes.html", {
+        "request": request,
+        "gimnasio": gimnasio,
+        "clientes": clientes,
+        "DEFAULT_AVATAR_REL": DEFAULT_AVATAR_REL
+    })
+
+
+# ───────────────────────────────
+# 💳 Gestión de Cobros
+# ───────────────────────────────
+
+@app.get("/panel-gimnasio", response_class=HTMLResponse)
+async def panel_gimnasio(
+        request: Request,
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    logger.info(f"Acceso a /panel-gimnasio por: {user['email']}")
+
+    # Obtener datos del gimnasio para el template
+    gimnasio = await db.get(models.Usuario, user["id"])
+
+    # Asegurar que gimnasio tenga imagen_url
+    if gimnasio and not getattr(gimnasio, 'imagen_url', None):
+        gimnasio.imagen_url = "uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png"
+
+    # Obtener estadísticas para el dashboard
+    # Clientes activos
+    result_clientes = await db.execute(
+        select(func.count(models.UsuarioGimnasio.usuario_id))
+        .where(models.UsuarioGimnasio.gimnasio_id == user["id"])
+    )
+    clientes_activos = result_clientes.scalar() or 0
+
+    # Peticiones pendientes
+    result_peticiones = await db.execute(
+        select(func.count(models.PeticionPlan.id))
+        .where(
+            models.PeticionPlan.gimnasio_id == user["id"],
+            models.PeticionPlan.estado == "pendiente"
+        )
+    )
+    peticiones_pendientes = result_peticiones.scalar() or 0
+
+    # Productos activos
+    result_productos = await db.execute(
+        select(func.count(models.ProductoGimnasio.id))
+        .where(
+            models.ProductoGimnasio.gimnasio_id == user["id"],
+            models.ProductoGimnasio.activo == True
+        )
+    )
+    productos_activos = result_productos.scalar() or 0
+
+    # Peticiones recientes
+    result_peticiones_recientes = await db.execute(
+        select(models.PeticionPlan)
+        .where(models.PeticionPlan.gimnasio_id == user["id"])
+        .order_by(models.PeticionPlan.fecha_creacion.desc())
+        .limit(5)
+    )
+    peticiones_recientes = result_peticiones_recientes.scalars().all()
+
+    # Clientes recientes
+    result_clientes_recientes = await db.execute(
+        select(models.Usuario)
+        .join(models.UsuarioGimnasio, models.UsuarioGimnasio.usuario_id == models.Usuario.id)
+        .where(models.UsuarioGimnasio.gimnasio_id == user["id"])
+        .order_by(models.UsuarioGimnasio.fecha_registro.desc())
+        .limit(5)
+    )
+    clientes_recientes = result_clientes_recientes.scalars().all()
+
+    # Placeholders para las otras variables (debes implementar la lógica real)
+    clases = []  # Implementa la lógica para obtener clases
+    suscripciones = []  # Implementa la lógica para obtener suscripciones
+    total_clientes = clientes_activos
+    total_ingresos = 0  # Implementa la lógica para calcular ingresos totales
+    porcentaje_ocupacion = 0  # Implementa la lógica para calcular ocupación
+    ingresos_mensuales = 0  # Implementa la lógica para calcular ingresos mensuales
+    ingresos_anuales = 0  # Implementa la lógica para calcular ingresos anuales
+
+    return templates.TemplateResponse("usuario_profesional.html", {
+        "request": request,
+        "usuario": gimnasio,  # Usar gimnasio como usuario para el template
+        "gimnasio": gimnasio,
+        "clases": clases,
+        "suscripciones": suscripciones,
+        "total_clientes": total_clientes,
+        "total_ingresos": total_ingresos,
+        "porcentaje_ocupacion": porcentaje_ocupacion,
+        "clientes_activos": clientes_activos,
+        "ingresos_mensuales": ingresos_mensuales,
+        "ingresos_anuales": ingresos_anuales,
+        "peticiones_pendientes": peticiones_pendientes,
+        "productos_activos": productos_activos,
+        "peticiones_recientes": peticiones_recientes,
+        "clientes_recientes": clientes_recientes,
+        "DEFAULT_AVATAR_REL": "uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png"
+    })
+
+
+@app.post("/panel-gimnasio/productos/agregar")
+async def agregar_producto(
+        request: Request,
+        user=Depends(role_required(["gimnasio"])),
+        db: AsyncSession = Depends(get_db)
+):
+    """Endpoint para agregar productos desde el dashboard"""
+    try:
+        data = await request.json()
+
+        nuevo_producto = models.ProductoGimnasio(
+            gimnasio_id=user["id"],
+            nombre=data.get("nombre"),
+            descripcion=data.get("descripcion"),
+            precio=float(data.get("precio", 0)),
+            tipo=data.get("tipo", "suplemento"),
+            activo=True,
+            fecha_creacion=datetime.now()
+        )
+
+        db.add(nuevo_producto)
+        await db.commit()
+
+        return JSONResponse(
+            status_code=201,
+            content={"message": "Producto agregado correctamente", "id": nuevo_producto.id}
+        )
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error al agregar producto: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

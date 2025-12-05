@@ -21,6 +21,20 @@
       padding: 0.5rem 1rem; border-radius: 8px;
     }
     button:hover { background: #15803d; }
+
+    /* Nuevos estilos para enlaces dentro de los cards */
+    .card a {
+      background: none;
+      color: #333;
+      padding: 0;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .card a:hover {
+      text-decoration: underline;
+      color: #4f46e5;
+    }
   </style>
 </head>
 <body>
@@ -36,7 +50,11 @@
       <h2>Gimnasios disponibles</h2>
       {% for gimnasio in resultados %}
         <div class="card">
-          <strong>{{ gimnasio.nombre }}</strong><br>
+          <strong>
+            <a href="/gimnasio/{{ gimnasio.id }}">
+              {{ gimnasio.nombre }}
+            </a>
+          </strong><br>
           {{ gimnasio.ubicacion or "Ubicación no especificada" }}
           <form method="post" action="/unirse-gimnasio">
             <input type="hidden" name="gimnasio_id" value="{{ gimnasio.id }}">
@@ -51,7 +69,11 @@
       <h2>Entrenadores y Dietistas</h2>
       {% for p in resultados %}
         <div class="card">
-          <strong>{{ p.nombre }}</strong> ({{ p.rol }})<br>
+          <strong>
+            <a href="/profesional/{{ p.id }}">
+              {{ p.nombre }}
+            </a>
+          </strong> ({{ p.rol }})<br>
           {{ p.email }}
           <form method="post" action="/profesionales/unirse">
             <input type="hidden" name="profesional_id" value="{{ p.id }}">
@@ -72,7 +94,11 @@
       </form>
       {% for amigo in resultados %}
         <div class="card">
-          <strong>{{ amigo.nombre }}</strong> <br> {{ amigo.email }}
+          <strong>
+            <a href="/perfil/{{ amigo.id }}">
+              {{ amigo.nombre }}
+            </a>
+          </strong> <br> {{ amigo.email }}
           <form method="post" action="/amigos/agregar">
             <input type="hidden" name="amigo_id" value="{{ amigo.id }}">
             <button type="submit">Agregar amigo</button>

@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clientes - Dashboard Gimnasio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+  /* Reset básico */
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+  body{ display:flex; min-height:100vh; background:#f4f6fc; }
+
+  /* ============================ */
+  /* Sidebar (igual que en otras plantillas) */
+  /* ============================ */
+  .sidebar{
+    width:220px;
+    background:linear-gradient(to bottom,#667eea,#764ba2);
+    padding:2rem 1rem;
+    color:#fff;
+    flex-shrink:0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar h2{ margin-bottom:2rem; text-align:center; font-size:1.5rem; }
+  .sidebar a{
+    display:block;
+    color:#fff;
+    text-decoration:none;
+    margin:1rem 0;
+    padding:.75rem 1rem;
+    border-radius:12px;
+    transition:background .2s ease;
+  }
+  .sidebar a:hover{ background:rgba(255,255,255,.20); }
+  .sidebar a.sidebar-item{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    margin:.5rem 0;
+    padding:.6rem .9rem;
+    background:transparent;
+  }
+  .sidebar a.sidebar-item:hover{ background:rgba(255,255,255,.18); }
+  .sidebar a.sidebar-profile-link{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:.45rem 1rem;
+    margin-top:.75rem;
+    border-radius:10px;
+    background:transparent;
+  }
+  .sidebar a.sidebar-profile-link:hover{ background:rgba(255,255,255,.15); }
+  .sidebar-avatar{
+    width:38px; height:38px;
+    border-radius:50%;
+    object-fit:cover;
+    flex:0 0 38px;
+    border:2px solid rgba(255,255,255,.6);
+    display:block;
+  }
+  .sidebar-label{
+    display:flex;
+    align-items:center;
+    height:38px;
+    line-height:1;
+    font-size:1rem; font-weight:600; color:#fff;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:140px;
+  }
+  .sidebar-logout {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+  .sidebar-logout a {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+  }
+  .sidebar-logout a:hover {
+    background: rgba(231, 76, 60, 0.8);
+    border-color: rgba(231, 76, 60, 0.5);
+  }
+
+  /* ============================ */
+  /* Main */
+  /* ============================ */
+  .main{ flex:1; padding:2rem; overflow-y:auto; }
+
+  /* ============================ */
+  /* Cards y KPIs */
+  /* ============================ */
+  .dashboard{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card{
+    background:#fff; border-radius:20px; padding:1.5rem;
+    box-shadow:0 8px 20px rgba(0,0,0,.05);
+  }
+  .card h3{ margin-bottom:.5rem; color:#333; }
+  .kpi-value{ font-size:1.35rem; font-weight:700; color:#222; }
+  .kpi-sub{ color:#777; font-size:.85rem; margin-top:.15rem; }
+
+  /* ============================ */
+  /* Secciones de contenido */
+  /* ============================ */
+  .section {
+    background: #fff;
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,.05);
+  }
+
+  .section h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Tablas */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e5ee;
+  }
+
+  .table th {
+    background: #f8f9fc;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .table tr:hover {
+    background: #f8f9fc;
+  }
+
+  /* Botones */
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary {
+    background: #667eea;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #5a67d8;
+  }
+
+  .btn-success {
+    background: #18a957;
+    color: white;
+  }
+
+  .btn-success:hover {
+    background: #148f4a;
+  }
+
+  .btn-warning {
+    background: #e67e22;
+    color: white;
+  }
+
+  .btn-warning:hover {
+    background: #d35400;
+  }
+
+  .btn-info {
+    background: #3498db;
+    color: white;
+  }
+
+  .btn-info:hover {
+    background: #2980b9;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .badge-success {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .badge-warning {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  /* Filtros y búsqueda */
+  .filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .search-box {
+    position: relative;
+    flex: 2;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid #e2e5ee;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+
+  .search-box::before {
+    content: "🔍";
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+  }
+
+  /* Tarjetas de cliente */
+  .client-card {
+    background: #f8f9fc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #e2e5ee;
+    margin-bottom: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .client-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  }
+
+  .client-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .client-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .client-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #e2e5ee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .client-details {
+    flex: 1;
+  }
+
+  .client-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+  }
+
+  .client-meta {
+    color: #666;
+    font-size: 0.9rem;
+  }
+
+  .client-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e5ee;
+  }
+
+  .stat-item {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  /* Mensaje de vacío */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #666;
+  }
+
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .empty-state h4 {
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+
+  .empty-state p {
+    margin-bottom: 1.5rem;
+  }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Panel Gimnasio</h2>
+
+    <div class="sidebar-nav">
+      <a href="/panel-gimnasio" class="sidebar-item">📊 Dashboard</a>
+      <a href="/panel-gimnasio/infraestructura" class="sidebar-item">🏗️ Infraestructura</a>
+      <a href="/panel-gimnasio/peticiones" class="sidebar-item">📋 Peticiones</a>
+      <a href="/panel-gimnasio/productos" class="sidebar-item">🛍️ Mis Productos</a>
+      <a href="/panel-gimnasio/clientes" class="sidebar-item">👥 Gestión de Clientes</a>
+      <a href="/panel-gimnasio/cobros" class="sidebar-item">💳 Gestión de Cobros</a>
+      <a href="/ajustes" class="sidebar-item">⚙️ Ajustes</a>
+    </div>
+
+    <!-- Bloque de perfil abajo -->
+    <a href="/mi-perfil" class="sidebar-item sidebar-profile-link">
+      <img
+        class="sidebar-avatar"
+        src="{{ request.url_for('static', path='uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png') }}"
+        alt="Foto de tu perfil"
+        onerror="this.src='{{ request.url_for('static', path='uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png') }}'"
+      />
+      <span class="sidebar-label">{{ gimnasio.nombre if gimnasio else 'Tu Gimnasio' }}</span>
+    </a>
+
+    <!-- Botón de cerrar sesión -->
+    <div class="sidebar-logout">
+      <a href="/login" class="sidebar-item">
+        🚪 Cerrar Sesión
+      </a>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- Encabezado de la página -->
+    <div class="section">
+      <h1>👥 Gestión de Clientes</h1>
+      <p>Administra los clientes de tu gimnasio. Visualiza su actividad, planes activos y estado de membresía.</p>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="dashboard">
+      <div class="card">
+        <h3>Clientes Totales</h3>
+        <div class="kpi-value">{{ total_clientes|default(0) }}</div>
+        <div class="kpi-sub">Registrados en el sistema</div>
+      </div>
+
+      <div class="card">
+        <h3>Clientes Activos</h3>
+        <div class="kpi-value">{{ clientes_activos|default(0) }}</div>
+        <div class="kpi-sub">Con membresía activa</div>
+      </div>
+
+      <div class="card">
+        <h3>Nuevos este mes</h3>
+        <div class="kpi-value">{{ nuevos_mes|default(0) }}</div>
+        <div class="kpi-sub">Nuevos registros</div>
+      </div>
+
+      <div class="card">
+        <h3>Membresías</h3>
+        <div class="kpi-value">{{ membresias_activas|default(0) }}</div>
+        <div class="kpi-sub">Planes activos</div>
+      </div>
+    </div>
+
+    <!-- Filtros y búsqueda -->
+    <div class="section">
+      <div class="filters">
+        <div class="filter-group">
+          <label for="estado">Estado</label>
+          <select id="estado" onchange="filtrarClientes()">
+            <option value="">Todos los estados</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+            <option value="suspendido">Suspendido</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="membresia">Tipo de Membresía</label>
+          <select id="membresia" onchange="filtrarClientes()">
+            <option value="">Todos los tipos</option>
+            <option value="basica">Básica</option>
+            <option value="premium">Premium</option>
+            <option value="elite">Elite</option>
+          </select>
+        </div>
+
+        <div class="search-box">
+          <label for="busqueda">Buscar cliente</label>
+          <input type="text" id="busqueda" placeholder="Nombre, email..." oninput="filtrarClientes()">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3>Lista de Clientes</h3>
+        <button class="btn btn-primary" onclick="exportarClientes()">
+          📊 Exportar Reporte
+        </button>
+      </div>
+
+      <!-- Lista de clientes -->
+      {% if clientes and clientes|length > 0 %}
+        {% for cliente in clientes %}
+        <div class="client-card" data-estado="{{ cliente.estado|default('activo') }}" data-membresia="{{ cliente.membresia|default('basica') }}">
+          <div class="client-header">
+            <div class="client-info">
+              <div class="client-avatar">
+                {% if cliente.imagen_url %}
+                <img src="{{ request.url_for('static', path=cliente.imagen_url) }}"
+                     alt="{{ cliente.nombre }}"
+                     style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                {% else %}
+                👤
+                {% endif %}
+              </div>
+              <div class="client-details">
+                <div class="client-name">{{ cliente.nombre }}</div>
+                <div class="client-meta">
+                  {{ cliente.email }} •
+                  <span class="badge badge-{{ 'success' if cliente.estado == 'activo' else 'warning' if cliente.estado == 'inactivo' else 'danger' }}">
+                    {{ cliente.estado|default('activo')|title }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="client-actions">
+              <button class="btn btn-info" onclick="verDetallesCliente({{ cliente.id }})">👁️ Ver</button>
+              <button class="btn btn-warning" onclick="editarCliente({{ cliente.id }})">✏️ Editar</button>
+            </div>
+          </div>
+
+          <div class="client-stats">
+            <div class="stat-item">
+              <div class="stat-value">{{ cliente.entrenamientos_completados|default(0) }}</div>
+              <div class="stat-label">Entrenos</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ cliente.membresia|default('Básica') }}</div>
+              <div class="stat-label">Membresía</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ cliente.ultima_visita|default('N/A') }}</div>
+              <div class="stat-label">Última visita</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">👥</div>
+          <h4>No hay clientes registrados</h4>
+          <p>Los clientes aparecerán aquí cuando se registren en tu gimnasio</p>
+          <button class="btn btn-primary" onclick="invitarClientes()">
+            📧 Invitar Clientes
+          </button>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Filtrar clientes
+    function filtrarClientes() {
+      const estado = document.getElementById('estado').value;
+      const membresia = document.getElementById('membresia').value;
+      const busqueda = document.getElementById('busqueda').value.toLowerCase();
+
+      document.querySelectorAll('.client-card').forEach(card => {
+        const cardEstado = card.getAttribute('data-estado');
+        const cardMembresia = card.getAttribute('data-membresia');
+        const nombre = card.querySelector('.client-name').textContent.toLowerCase();
+
+        let mostrar = true;
+
+        if (estado && cardEstado !== estado) mostrar = false;
+        if (membresia && cardMembresia !== membresia) mostrar = false;
+        if (busqueda && !nombre.includes(busqueda)) mostrar = false;
+
+        card.style.display = mostrar ? 'block' : 'none';
+      });
+    }
+
+    // Funciones de acción
+    function verDetallesCliente(id) {
+      window.location.href = `/panel-gimnasio/clientes/${id}`;
+    }
+
+    function editarCliente(id) {
+      window.location.href = `/panel-gimnasio/clientes/${id}/editar`;
+    }
+
+    function exportarClientes() {
+      // Aquí iría la lógica para exportar
+      alert('Exportando reporte de clientes...');
+    }
+
+    function invitarClientes() {
+      // Aquí iría la lógica para invitar
+      alert('Funcionalidad de invitación a clientes');
+    }
+  </script>
+</body>
+</html>

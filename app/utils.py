@@ -1,6 +1,7 @@
 # app/utils.py
 import os
 import json
+import logging  # <-- AÑADIR ESTO
 from .config import settings
 from typing import List, Optional
 from openai import AsyncOpenAI
@@ -13,6 +14,9 @@ from jose import jwt, JWTError
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
+
+# AÑADIR ESTO - Configurar logger para utils.py
+logger = logging.getLogger(__name__)
 # ===========================
 #  Cliente OpenAI (lazy-load)
 # ===========================
@@ -356,3 +360,156 @@ async def ajustar_rutina_ia(progreso_dia, api_key: Optional[str] = None):
         return data if isinstance(data, list) else []
     except Exception:
         return []
+
+
+async def analizar_nutricion_imagen(imagen_url: str, descripcion: str = "") -> dict:
+    """
+    Analiza una imagen de comida usando IA para estimar nutrición
+    Devuelve: {calorias, proteinas_g, carbohidratos_g, grasas_g, fibra_g, azucar_g}
+    """
+    client = _get_client()
+
+    prompt = f"""
+    Eres un nutricionista experto. Analiza esta imagen de comida y estima su valor nutricional.
+    {"Descripción proporcionada: " + descripcion if descripcion else ""}
+
+    Devuelve SOLO un JSON con estas claves:
+    - calorias (número entero)
+    - proteinas_g (número con 1 decimal)
+    - carbohidratos_g (número con 1 decimal) 
+    - grasas_g (número con 1 decimal)
+    - fibra_g (número con 1 decimal, opcional)
+    - azucar_g (número con 1 decimal, opcional)
+
+    Sé realista en las estimaciones. Si no puedes analizar la imagen, devuelve valores null.
+    """
+
+    try:
+        # Para OpenAI Vision necesitamos pasar la imagen como base64 o URL
+        # Como nuestras imágenes están en local, las servimos via /static/uploads/
+        image_url = f"http://localhost:8000{imagen_url}"  # Ajusta según tu dominio
+
+        response = await client.chat.completions.create(
+            model="gpt-4o",  # o gpt-4-vision-preview
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_url}
+                        }
+                    ]
+                }
+            ],
+            max_tokens=500
+        )
+
+        resultado = json.loads(response.choices[0].message.content)
+        return resultado
+
+    except Exception as e:
+        logger.error(f"Error en análisis nutricional IA: {e}")
+        return {
+            "calorias": None,
+            "proteinas_g": None,
+            "carbohidratos_g": None,
+            "grasas_g": None,
+            "fibra_g": None,
+            "azucar_g": None
+        }
+
+
+async def analizar_nutricion_imagen(imagen_url: str, descripcion: str = "") -> dict:
+    """
+    Analiza una imagen de comida usando IA para estimar nutrición
+    """
+    try:
+        client = _get_client()
+    except HTTPException:
+        # Si no hay API key configurada
+        logger.warning("OPENAI_API_KEY no configurada para análisis nutricional")
+        return {
+            "calorias": None,
+            "proteinas_g": None,
+            "carbohidratos_g": None,
+            "grasas_g": None,
+            "fibra_g": None,
+            "azucar_g": None
+        }
+
+    prompt = f"""
+    Eres un nutricionista experto. Analiza ESTA IMAGEN de comida y estima su valor nutricional aproximado.
+    {f"El usuario describe la comida como: '{descripcion}'" if descripcion else ""}
+
+    Devuelve SOLO un JSON válido con estas claves:
+    - "calorias" (número entero, calorías totales)
+    - "proteinas_g" (número con 1 decimal, gramos de proteína)
+    - "carbohidratos_g" (número con 1 decimal, gramos de carbohidratos)
+    - "grasas_g" (número con 1 decimal, gramos de grasas)
+    - "fibra_g" (número con 1 decimal, gramos de fibra, opcional)
+    - "azucar_g" (número con 1 decimal, gramos de azúcar, opcional)
+
+    Sé realista en las estimaciones. Si la imagen no es clara o no puedes analizarla, 
+    devuelve null para todos los valores.
+
+    Ejemplo de respuesta:
+    {{"calorias": 450, "proteinas_g": 25.0, "carbohidratos_g": 45.0, "grasas_g": 15.0, "fibra_g": 5.0, "azucar_g": 10.0}}
+    """
+
+    try:
+        # Para desarrollo local, usamos la URL relativa
+        # En producción necesitarías la URL absoluta
+        image_url = f"http://localhost:8000{imagen_url}"
+
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_url,
+                                "detail": "high"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=500,
+            temperature=0.3
+        )
+
+        # Parsear respuesta JSON
+        content = response.choices[0].message.content.strip()
+        if content.startswith("```json"):
+            content = content.replace("```json", "").replace("```", "").strip()
+
+        resultado = json.loads(content)
+        logger.info(f"Análisis nutricional IA: {resultado}")
+        return resultado
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Error parseando JSON de IA: {e}")
+        return {
+            "calorias": None,
+            "proteinas_g": None,
+            "carbohidratos_g": None,
+            "grasas_g": None,
+            "fibra_g": None,
+            "azucar_g": None
+        }
+    except Exception as e:
+        logger.error(f"Error en análisis nutricional IA: {e}")
+        return {
+            "calorias": None,
+            "proteinas_g": None,
+            "carbohidratos_g": None,
+            "grasas_g": None,
+            "fibra_g": None,
+            "azucar_g": None
+        }

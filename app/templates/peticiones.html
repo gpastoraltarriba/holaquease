@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Peticiones - Dashboard Gimnasio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+  /* Reset básico */
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+  body{ display:flex; min-height:100vh; background:#f4f6fc; }
+
+  /* ============================ */
+  /* Sidebar */
+  /* ============================ */
+  .sidebar{
+    width:220px;
+    background:linear-gradient(to bottom,#667eea,#764ba2);
+    padding:2rem 1rem;
+    color:#fff;
+    flex-shrink:0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar h2{ margin-bottom:2rem; text-align:center; font-size:1.5rem; }
+
+  /* Estilo base para enlaces del sidebar */
+  .sidebar a{
+    display:block;
+    color:#fff;
+    text-decoration:none;
+    margin:1rem 0;
+    padding:.75rem 1rem;
+    border-radius:12px;
+    transition:background .2s ease;
+  }
+  .sidebar a:hover{ background:rgba(255,255,255,.20); }
+
+  /* Ítems horizontales */
+  .sidebar a.sidebar-item{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    margin:.5rem 0;
+    padding:.6rem .9rem;
+    background:transparent;
+  }
+  .sidebar a.sidebar-item:hover{ background:rgba(255,255,255,.18); }
+
+  /* Ítem de perfil */
+  .sidebar a.sidebar-profile-link{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:.45rem 1rem;
+    margin-top:.75rem;
+    border-radius:10px;
+    background:transparent;
+  }
+  .sidebar a.sidebar-profile-link:hover{ background:rgba(255,255,255,.15); }
+
+  /* Avatar del usuario */
+  .sidebar-avatar{
+    width:38px; height:38px;
+    border-radius:50%;
+    object-fit:cover;
+    flex:0 0 38px;
+    border:2px solid rgba(255,255,255,.6);
+    display:block;
+  }
+
+  /* Texto del nombre */
+  .sidebar-label{
+    display:flex;
+    align-items:center;
+    height:38px;
+    line-height:1;
+    font-size:1rem; font-weight:600; color:#fff;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:140px;
+  }
+
+  /* Botón de cerrar sesión */
+  .sidebar-logout {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .sidebar-logout a {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-logout a:hover {
+    background: rgba(231, 76, 60, 0.8);
+    border-color: rgba(231, 76, 60, 0.5);
+  }
+
+  /* ============================ */
+  /* Main */
+  /* ============================ */
+  .main{ flex:1; padding:2rem; overflow-y:auto; }
+
+  /* ============================ */
+  /* Cards y KPIs */
+  /* ============================ */
+  .dashboard{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card{
+    background:#fff; border-radius:20px; padding:1.5rem;
+    box-shadow:0 8px 20px rgba(0,0,0,.05);
+  }
+  .card h3{ margin-bottom:.5rem; color:#333; }
+  .kpi-value{ font-size:1.35rem; font-weight:700; color:#222; }
+  .kpi-sub{ color:#777; font-size:.85rem; margin-top:.15rem; }
+
+  /* ============================ */
+  /* Secciones de contenido */
+  /* ============================ */
+  .section {
+    background: #fff;
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,.05);
+  }
+
+  .section h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Tablas */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e5ee;
+  }
+
+  .table th {
+    background: #f8f9fc;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .table tr:hover {
+    background: #f8f9fc;
+  }
+
+  /* Botones */
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary {
+    background: #667eea;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #5a67d8;
+  }
+
+  .btn-success {
+    background: #18a957;
+    color: white;
+  }
+
+  .btn-success:hover {
+    background: #148f4a;
+  }
+
+  .btn-warning {
+    background: #e67e22;
+    color: white;
+  }
+
+  .btn-warning:hover {
+    background: #d35400;
+  }
+
+  .btn-danger {
+    background: #e74c3c;
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: #c0392b;
+  }
+
+  .btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  /* Formularios */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e5ee;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-row-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid #e2e5ee;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-weight: 600;
+    color: #666;
+  }
+
+  .tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  /* Modal */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal.active {
+    display: flex;
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 1000px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e2e5ee;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .badge-success {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .badge-warning {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  .badge-primary {
+    background: #d6e4ff;
+    color: #004085;
+  }
+
+  /* Estados vacíos */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #666;
+  }
+
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .empty-state h4 {
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+
+  .empty-state p {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Tarjetas de ejercicios y comidas */
+  .exercise-card, .meal-card {
+    background: #f8f9fc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e2e5ee;
+    position: relative;
+  }
+
+  .exercise-header, .meal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .exercise-image, .meal-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #e2e5ee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+  }
+
+  .exercise-details, .meal-details {
+    flex: 1;
+    margin-right: 1rem;
+  }
+
+  .exercise-actions, .meal-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .exercise-stats, .meal-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .stat {
+    text-align: center;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 8px;
+  }
+
+  .stat-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #667eea;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  /* Formulario de justificación */
+  .justification-form {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e5ee;
+  }
+
+  /* Filtros */
+  .filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .filter-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #666;
+  }
+
+  /* Pills de estado */
+  .status-pills {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .status-pill {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: #f8f9fc;
+    color: #666;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+
+  .status-pill.active {
+    background: #667eea;
+    color: white;
+  }
+
+  /* Área de arrastrar y soltar */
+  .drop-zone {
+    border: 2px dashed #e2e5ee;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .drop-zone:hover {
+    border-color: #667eea;
+  }
+
+  .drop-zone i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #888;
+  }
+
+  /* Previsualización de imagen IA */
+  .ai-preview {
+    width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  .ai-generating {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #f8f9fc;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e2e5ee;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Select de equipamiento */
+  .equipment-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e5ee;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+  }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Panel Gimnasio</h2>
+
+    <div class="sidebar-nav">
+      <a href="/panel-gimnasio" class="sidebar-item">📊 Dashboard</a>
+      <a href="/panel-gimnasio/infraestructura" class="sidebar-item">🏗️ Infraestructura</a>
+      <a href="/panel-gimnasio/peticiones" class="sidebar-item">📋 Peticiones</a>
+      <a href="/panel-gimnasio/productos" class="sidebar-item">🛍️ Mis Productos</a>
+      <a href="/panel-gimnasio/clientes" class="sidebar-item">👥 Gestión de Clientes</a>
+      <a href="/panel-gimnasio/cobros" class="sidebar-item">💳 Gestión de Cobros</a>
+      <a href="/ajustes" class="sidebar-item">⚙️ Ajustes</a>
+    </div>
+
+    <!-- Bloque de perfil abajo -->
+    <a href="/mi-perfil" class="sidebar-item sidebar-profile-link">
+      <img
+        class="sidebar-avatar"
+        src="{{ request.url_for('static', path='uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png') }}"
+        alt="Foto de tu perfil"
+        onerror="this.src='{{ request.url_for('static', path='uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png') }}'"
+      />
+      <span class="sidebar-label">{{ gimnasio.nombre if gimnasio else 'Tu Gimnasio' }}</span>
+    </a>
+
+    <!-- Botón de cerrar sesión -->
+    <div class="sidebar-logout">
+      <a href="/login" class="sidebar-item">
+        🚪 Cerrar Sesión
+      </a>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- Encabezado de la página -->
+    <div class="section">
+      <h1>📋 Gestión de Peticiones</h1>
+      <p>Gestiona las solicitudes de rutinas y dietas de tus clientes</p>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="dashboard">
+      <div class="card">
+        <h3>Peticiones Pendientes</h3>
+        <div class="kpi-value">{{ peticiones_pendientes|default(0) }}</div>
+        <div class="kpi-sub">Esperando tu respuesta</div>
+      </div>
+
+      <div class="card">
+        <h3>Rutinas Solicitadas</h3>
+        <div class="kpi-value">{{ rutinas_solicitadas|default(0) }}</div>
+        <div class="kpi-sub">Este mes</div>
+      </div>
+
+      <div class="card">
+        <h3>Dietas Solicitadas</h3>
+        <div class="kpi-value">{{ dietas_solicitadas|default(0) }}</div>
+        <div class="kpi-sub">Este mes</div>
+      </div>
+
+      <div class="card">
+        <h3>Peticiones IA</h3>
+        <div class="kpi-value">{{ peticiones_ia|default(0) }}</div>
+        <div class="kpi-sub">Generadas por IA</div>
+      </div>
+    </div>
+
+    <!-- Filtros y estado -->
+    <div class="section">
+      <div class="filters">
+        <div class="filter-group">
+          <label>Tipo</label>
+          <select id="filterTipo">
+            <option value="todas">Todas las peticiones</option>
+            <option value="rutina">Solo rutinas</option>
+            <option value="dieta">Solo dietas</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Origen</label>
+          <select id="filterOrigen">
+            <option value="todos">Todos los orígenes</option>
+            <option value="ia">Generadas por IA</option>
+            <option value="manual">Creadas manualmente</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Fecha</label>
+          <select id="filterFecha">
+            <option value="todas">Todas las fechas</option>
+            <option value="hoy">Hoy</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes">Este mes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="status-pills">
+        <div class="status-pill active" data-status="todas">Todas</div>
+        <div class="status-pill" data-status="pendiente">Pendientes</div>
+        <div class="status-pill" data-status="aceptada">Aceptadas</div>
+        <div class="status-pill" data-status="rechazada">Rechazadas</div>
+        <div class="status-pill" data-status="completada">Completadas</div>
+      </div>
+
+      <!-- Lista de peticiones -->
+      <div class="tab-content active" id="lista-peticiones">
+        {% if peticiones and peticiones|length > 0 %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Tipo</th>
+              <th>Fecha</th>
+              <th>Origen</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for peticion in peticiones %}
+            <tr>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  {% if peticion.cliente_avatar %}
+                  <img src="{{ peticion.cliente_avatar }}"
+                       alt="{{ peticion.cliente_nombre }}"
+                       style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                  {% endif %}
+                  <div>
+                    <div style="font-weight: 600;">{{ peticion.cliente_nombre }}</div>
+                    {% if peticion.cliente_email %}
+                    <div style="font-size: 0.8rem; color: #666;">{{ peticion.cliente_email }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge badge-{{ 'primary' if peticion.tipo == 'rutina' else 'info' }}">
+                  {{ '🏋️ ' + peticion.tipo if peticion.tipo == 'rutina' else '🥗 ' + peticion.tipo }}
+                </span>
+              </td>
+              <td>{{ peticion.fecha_solicitud }}</td>
+              <td>
+                <span class="badge badge-{{ 'warning' if peticion.origen == 'ia' else 'success' }}">
+                  {{ 'IA' if peticion.origen == 'ia' else 'Manual' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge badge-{{
+                  'warning' if peticion.estado == 'pendiente'
+                  else 'success' if peticion.estado == 'aceptada'
+                  else 'danger' if peticion.estado == 'rechazada'
+                  else 'info' if peticion.estado == 'completada'
+                  else 'primary'
+                }}">
+                  {{ peticion.estado }}
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="btn btn-primary btn-sm" onclick="verPeticion({{ peticion.id }})">
+                    👁️ Ver
+                  </button>
+                  {% if peticion.estado == 'pendiente' %}
+                  <button class="btn btn-success btn-sm" onclick="aceptarPeticion({{ peticion.id }})">
+                    ✓ Aceptar
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="rechazarPeticion({{ peticion.id }})">
+                    ✗ Rechazar
+                  </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <h4>No hay peticiones</h4>
+          <p>Cuando tus clientes soliciten rutinas o dietas, aparecerán aquí</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de detalle de petición -->
+  <div class="modal" id="peticionModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Detalle de Petición</h3>
+        <button class="modal-close" onclick="closePeticionModal()">&times;</button>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="info">Información del Cliente</div>
+        <div class="tab" data-tab="rutina">Rutina</div>
+        <div class="tab" data-tab="dieta">Dieta</div>
+        <div class="tab" data-tab="historial">Historial de Cambios</div>
+      </div>
+
+      <!-- Información del cliente -->
+      <div class="tab-content active" id="info-tab">
+        <div id="cliente-info">
+          <!-- Se llenará dinámicamente con los datos del cliente -->
+        </div>
+      </div>
+
+      <!-- Rutina -->
+      <div class="tab-content" id="rutina-tab">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h4>Rutina de Entrenamiento</h4>
+          <button class="btn btn-primary" onclick="agregarEjercicio()">
+            ➕ Agregar Ejercicio
+          </button>
+        </div>
+
+        <div id="ejercicios-container">
+          <!-- Los ejercicios se añadirán aquí dinámicamente -->
+        </div>
+
+        <div class="justification-form">
+          <div class="form-group">
+            <label>Justificación de cambios (para aprendizaje de IA)</label>
+            <textarea id="justificacion-rutina" rows="3" placeholder="Explica por qué has realizado estos cambios..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dieta -->
+      <div class="tab-content" id="dieta-tab">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h4>Plan de Alimentación</h4>
+          <button class="btn btn-primary" onclick="agregarComida()">
+            ➕ Agregar Comida
+          </button>
+        </div>
+
+        <div id="comidas-container">
+          <!-- Las comidas se añadirán aquí dinámicamente -->
+        </div>
+
+        <div class="form-row-4" style="margin-top: 1.5rem;">
+          <div class="form-group">
+            <label>Calorías Totales</label>
+            <input type="number" id="calorias-totales" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>Proteínas (g)</label>
+            <input type="number" id="proteinas-totales" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>Carbohidratos (g)</label>
+            <input type="number" id="carbohidratos-totales" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>Grasas (g)</label>
+            <input type="number" id="grasas-totales" placeholder="0">
+          </div>
+        </div>
+
+        <div class="justification-form">
+          <div class="form-group">
+            <label>Justificación de cambios (para aprendizaje de IA)</label>
+            <textarea id="justificacion-dieta" rows="3" placeholder="Explica por qué has realizado estos cambios..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial de cambios -->
+      <div class="tab-content" id="historial-tab">
+        <div id="historial-container">
+          <!-- El historial se cargará dinámicamente -->
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
+        <div>
+          <button class="btn btn-danger" onclick="rechazarPeticionModal()">Rechazar Petición</button>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button class="btn" onclick="closePeticionModal()">Cancelar</button>
+          <button class="btn btn-success" onclick="guardarPeticion()">Guardar y Enviar al Cliente</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para agregar/editar ejercicio -->
+  <div class="modal" id="ejercicioModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="ejercicioModalTitle">Agregar Ejercicio</h3>
+        <button class="modal-close" onclick="closeEjercicioModal()">&times;</button>
+      </div>
+
+      <form id="ejercicioForm">
+        <div class="form-group">
+          <label for="nombreEjercicio">Nombre del Ejercicio</label>
+          <input type="text" id="nombreEjercicio" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="series">Series</label>
+            <input type="number" id="series" min="1" required>
+          </div>
+          <div class="form-group">
+            <label for="repeticiones">Repeticiones</label>
+            <input type="text" id="repeticiones" placeholder="8-12" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="descanso">Descanso (segundos)</label>
+            <input type="number" id="descanso" min="0" value="60">
+          </div>
+          <div class="form-group">
+            <label for="equipamiento">Equipamiento</label>
+            <select id="equipamiento" class="equipment-select">
+              <option value="">Selecciona equipamiento</option>
+              {% if equipos_disponibles %}
+                {% for equipo in equipos_disponibles %}
+                <option value="{{ equipo.id }}">{{ equipo.nombre }}</option>
+                {% endfor %}
+              {% endif %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="descripcionEjercicio">Descripción</label>
+          <textarea id="descripcionEjercicio" rows="3" placeholder="Describe la técnica del ejercicio..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Imagen del Ejercicio (IA)</label>
+          <div class="drop-zone" onclick="generarImagenEjercicio()">
+            <div>🖼️</div>
+            <div>Generar imagen con IA</div>
+            <small>La IA creará una imagen ilustrativa del ejercicio</small>
+          </div>
+          <img id="ejercicioPreview" class="ai-preview" src="" alt="Vista previa">
+          <div class="ai-generating" id="ejercicioGenerando" style="display: none;">
+            <div class="spinner"></div>
+            <div>Generando imagen con IA...</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+          <button type="button" class="btn" onclick="closeEjercicioModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Ejercicio</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal para agregar/editar comida -->
+  <div class="modal" id="comidaModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="comidaModalTitle">Agregar Comida</h3>
+        <button class="modal-close" onclick="closeComidaModal()">&times;</button>
+      </div>
+
+      <form id="comidaForm">
+        <div class="form-group">
+          <label for="nombreComida">Nombre de la Comida</label>
+          <input type="text" id="nombreComida" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tipoComida">Tipo de Comida</label>
+            <select id="tipoComida" required>
+              <option value="">Selecciona tipo</option>
+              <option value="desayuno">Desayuno</option>
+              <option value="almuerzo">Almuerzo</option>
+              <option value="cena">Cena</option>
+              <option value="snack">Snack</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="pesoComida">Peso (gramos)</label>
+            <input type="number" id="pesoComida" min="1" placeholder="100">
+          </div>
+        </div>
+
+        <div class="form-row-4">
+          <div class="form-group">
+            <label for="caloriasComida">Calorías</label>
+            <input type="number" id="caloriasComida" min="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label for="proteinasComida">Proteínas (g)</label>
+            <input type="number" id="proteinasComida" min="0" step="0.1" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label for="carbohidratosComida">Carbohidratos (g)</label>
+            <input type="number" id="carbohidratosComida" min="0" step="0.1" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label for="grasasComida">Grasas (g)</label>
+            <input type="number" id="grasasComida" min="0" step="0.1" placeholder="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="recetaComida">Receta y Preparación</label>
+          <textarea id="recetaComida" rows="4" placeholder="Describe la receta y método de preparación..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Imagen del Plato (IA)</label>
+          <div class="drop-zone" onclick="generarImagenComida()">
+            <div>🖼️</div>
+            <div>Generar imagen con IA</div>
+            <small>La IA creará una imagen ilustrativa del plato</small>
+          </div>
+          <img id="comidaPreview" class="ai-preview" src="" alt="Vista previa">
+          <div class="ai-generating" id="comidaGenerando" style="display: none;">
+            <div class="spinner"></div>
+            <div>Generando imagen con IA...</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+          <button type="button" class="btn" onclick="closeComidaModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Comida</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Variables globales
+    let peticionActual = null;
+    let ejercicios = [];
+    let comidas = [];
+    let ejercicioEditIndex = null;
+    let comidaEditIndex = null;
+
+    // Funcionalidad de tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabId = tab.getAttribute('data-tab');
+
+        // Remover clase active de todos los tabs y contenidos
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        // Añadir clase active al tab clickeado
+        tab.classList.add('active');
+
+        // Mostrar el contenido correspondiente
+        document.getElementById(tabId + '-tab').classList.add('active');
+      });
+    });
+
+    // Filtros de estado
+    document.querySelectorAll('.status-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.status-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        // Aquí iría la lógica para filtrar las peticiones
+      });
+    });
+
+    // Funciones para peticiones
+    function verPeticion(peticionId) {
+      // Cargar datos de la petición
+      peticionActual = peticionId;
+      document.getElementById('peticionModal').classList.add('active');
+
+      // Aquí se cargarían los datos reales de la petición
+      // Por ahora, solo mostramos el modal
+    }
+
+    function aceptarPeticion(peticionId) {
+      if (confirm('¿Aceptar esta petición?')) {
+        // Lógica para aceptar la petición
+      }
+    }
+
+    function rechazarPeticion(peticionId) {
+      if (confirm('¿Rechazar esta petición?')) {
+        // Lógica para rechazar la petición
+      }
+    }
+
+    function closePeticionModal() {
+      document.getElementById('peticionModal').classList.remove('active');
+      peticionActual = null;
+      ejercicios = [];
+      comidas = [];
+    }
+
+    function rechazarPeticionModal() {
+      if (confirm('¿Rechazar esta petición?')) {
+        // Lógica para rechazar
+        closePeticionModal();
+      }
+    }
+
+    function guardarPeticion() {
+      // Lógica para guardar todos los cambios
+      alert('Petición guardada y enviada al cliente');
+      closePeticionModal();
+    }
+
+    // Funciones para ejercicios
+    function agregarEjercicio() {
+      ejercicioEditIndex = null;
+      document.getElementById('ejercicioModalTitle').textContent = 'Agregar Ejercicio';
+      document.getElementById('ejercicioForm').reset();
+      document.getElementById('ejercicioPreview').style.display = 'none';
+      document.getElementById('ejercicioModal').classList.add('active');
+    }
+
+    function editarEjercicio(index) {
+      ejercicioEditIndex = index;
+      const ejercicio = ejercicios[index];
+
+      document.getElementById('ejercicioModalTitle').textContent = 'Editar Ejercicio';
+      document.getElementById('nombreEjercicio').value = ejercicio.nombre;
+      document.getElementById('series').value = ejercicio.series;
+      document.getElementById('repeticiones').value = ejercicio.repeticiones;
+      document.getElementById('descanso').value = ejercicio.descanso;
+      document.getElementById('equipamiento').value = ejercicio.equipamiento;
+      document.getElementById('descripcionEjercicio').value = ejercicio.descripcion;
+
+      if (ejercicio.imagen) {
+        document.getElementById('ejercicioPreview').src = ejercicio.imagen;
+        document.getElementById('ejercicioPreview').style.display = 'block';
+      }
+
+      document.getElementById('ejercicioModal').classList.add('active');
+    }
+
+    function eliminarEjercicio(index) {
+      if (confirm('¿Eliminar este ejercicio?')) {
+        ejercicios.splice(index, 1);
+        renderizarEjercicios();
+      }
+    }
+
+    function closeEjercicioModal() {
+      document.getElementById('ejercicioModal').classList.remove('active');
+    }
+
+    function generarImagenEjercicio() {
+      const nombreEjercicio = document.getElementById('nombreEjercicio').value;
+      if (!nombreEjercicio) {
+        alert('Por favor, ingresa el nombre del ejercicio primero');
+        return;
+      }
+
+      document.getElementById('ejercicioGenerando').style.display = 'flex';
+
+      // Simulación de generación de imagen con IA
+      setTimeout(() => {
+        document.getElementById('ejercicioGenerando').style.display = 'none';
+        document.getElementById('ejercicioPreview').src = 'https://via.placeholder.com/400x300/667eea/ffffff?text=' + encodeURIComponent(nombreEjercicio);
+        document.getElementById('ejercicioPreview').style.display = 'block';
+      }, 2000);
+    }
+
+    // Funciones para comidas
+    function agregarComida() {
+      comidaEditIndex = null;
+      document.getElementById('comidaModalTitle').textContent = 'Agregar Comida';
+      document.getElementById('comidaForm').reset();
+      document.getElementById('comidaPreview').style.display = 'none';
+      document.getElementById('comidaModal').classList.add('active');
+    }
+
+    function editarComida(index) {
+      comidaEditIndex = index;
+      const comida = comidas[index];
+
+      document.getElementById('comidaModalTitle').textContent = 'Editar Comida';
+      document.getElementById('nombreComida').value = comida.nombre;
+      document.getElementById('tipoComida').value = comida.tipo;
+      document.getElementById('pesoComida').value = comida.peso;
+      document.getElementById('caloriasComida').value = comida.calorias;
+      document.getElementById('proteinasComida').value = comida.proteinas;
+      document.getElementById('carbohidratosComida').value = comida.carbohidratos;
+      document.getElementById('grasasComida').value = comida.grasas;
+      document.getElementById('recetaComida').value = comida.receta;
+
+      if (comida.imagen) {
+        document.getElementById('comidaPreview').src = comida.imagen;
+        document.getElementById('comidaPreview').style.display = 'block';
+      }
+
+      document.getElementById('comidaModal').classList.add('active');
+    }
+
+    function eliminarComida(index) {
+      if (confirm('¿Eliminar esta comida?')) {
+        comidas.splice(index, 1);
+        renderizarComidas();
+      }
+    }
+
+    function closeComidaModal() {
+      document.getElementById('comidaModal').classList.remove('active');
+    }
+
+    function generarImagenComida() {
+      const nombreComida = document.getElementById('nombreComida').value;
+      if (!nombreComida) {
+        alert('Por favor, ingresa el nombre de la comida primero');
+        return;
+      }
+
+      document.getElementById('comidaGenerando').style.display = 'flex';
+
+      // Simulación de generación de imagen con IA
+      setTimeout(() => {
+        document.getElementById('comidaGenerando').style.display = 'none';
+        document.getElementById('comidaPreview').src = 'https://via.placeholder.com/400x300/18a957/ffffff?text=' + encodeURIComponent(nombreComida);
+        document.getElementById('comidaPreview').style.display = 'block';
+      }, 2000);
+    }
+
+    // Manejo de formularios
+    document.getElementById('ejercicioForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const ejercicio = {
+        nombre: document.getElementById('nombreEjercicio').value,
+        series: document.getElementById('series').value,
+        repeticiones: document.getElementById('repeticiones').value,
+        descanso: document.getElementById('descanso').value,
+        equipamiento: document.getElementById('equipamiento').value,
+        descripcion: document.getElementById('descripcionEjercicio').value,
+        imagen: document.getElementById('ejercicioPreview').src || null
+      };
+
+      if (ejercicioEditIndex !== null) {
+        ejercicios[ejercicioEditIndex] = ejercicio;
+      } else {
+        ejercicios.push(ejercicio);
+      }
+
+      renderizarEjercicios();
+      closeEjercicioModal();
+    });
+
+    document.getElementById('comidaForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const comida = {
+        nombre: document.getElementById('nombreComida').value,
+        tipo: document.getElementById('tipoComida').value,
+        peso: document.getElementById('pesoComida').value,
+        calorias: document.getElementById('caloriasComida').value,
+        proteinas: document.getElementById('proteinasComida').value,
+        carbohidratos: document.getElementById('carbohidratosComida').value,
+        grasas: document.getElementById('grasasComida').value,
+        receta: document.getElementById('recetaComida').value,
+        imagen: document.getElementById('comidaPreview').src || null
+      };
+
+      if (comidaEditIndex !== null) {
+        comidas[comidaEditIndex] = comida;
+      } else {
+        comidas.push(comida);
+      }
+
+      renderizarComidas();
+      closeComidaModal();
+    });
+
+    // Funciones de renderizado
+    function renderizarEjercicios() {
+      const container = document.getElementById('ejercicios-container');
+      container.innerHTML = '';
+
+      if (ejercicios.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">💪</div>
+            <h4>No hay ejercicios</h4>
+            <p>Agrega ejercicios para crear la rutina</p>
+          </div>
+        `;
+        return;
+      }
+
+      ejercicios.forEach((ejercicio, index) => {
+        const ejercicioHTML = `
+          <div class="exercise-card">
+            <div class="exercise-header">
+              <div class="exercise-details">
+                <h4>${ejercicio.nombre}</h4>
+                <p><strong>Series:</strong> ${ejercicio.series} | <strong>Repeticiones:</strong> ${ejercicio.repeticiones}</p>
+                <p><strong>Descanso:</strong> ${ejercicio.descanso}s | <strong>Equipamiento:</strong> ${ejercicio.equipamiento}</p>
+                ${ejercicio.descripcion ? `<p>${ejercicio.descripcion}</p>` : ''}
+              </div>
+              <div class="exercise-image">
+                ${ejercicio.imagen ?
+                  `<img src="${ejercicio.imagen}" alt="${ejercicio.nombre}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">` :
+                  '🖼️ Sin imagen'
+                }
+              </div>
+            </div>
+            <div class="exercise-actions">
+              <button class="btn btn-warning btn-sm" onclick="editarEjercicio(${index})">✏️ Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarEjercicio(${index})">🗑️ Eliminar</button>
+            </div>
+          </div>
+        `;
+        container.innerHTML += ejercicioHTML;
+      });
+    }
+
+    function renderizarComidas() {
+      const container = document.getElementById('comidas-container');
+      container.innerHTML = '';
+
+      if (comidas.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🥗</div>
+            <h4>No hay comidas</h4>
+            <p>Agrega comidas para crear el plan de alimentación</p>
+          </div>
+        `;
+        return;
+      }
+
+      comidas.forEach((comida, index) => {
+        const comidaHTML = `
+          <div class="meal-card">
+            <div class="meal-header">
+              <div class="meal-details">
+                <h4>${comida.nombre} <span class="badge badge-info">${comida.tipo}</span></h4>
+                <p><strong>Peso:</strong> ${comida.peso}g | <strong>Calorías:</strong> ${comida.calorias}</p>
+                <div class="meal-stats">
+                  <div class="stat">
+                    <div class="stat-value">${comida.proteinas}g</div>
+                    <div class="stat-label">Proteínas</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-value">${comida.carbohidratos}g</div>
+                    <div class="stat-label">Carbohidratos</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-value">${comida.grasas}g</div>
+                    <div class="stat-label">Grasas</div>
+                  </div>
+                </div>
+                ${comida.receta ? `<p><strong>Receta:</strong> ${comida.receta}</p>` : ''}
+              </div>
+              <div class="meal-image">
+                ${comida.imagen ?
+                  `<img src="${comida.imagen}" alt="${comida.nombre}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">` :
+                  '🖼️ Sin imagen'
+                }
+              </div>
+            </div>
+            <div class="meal-actions">
+              <button class="btn btn-warning btn-sm" onclick="editarComida(${index})">✏️ Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="eliminarComida(${index})">🗑️ Eliminar</button>
+            </div>
+          </div>
+        `;
+        container.innerHTML += comidaHTML;
+      });
+    }
+
+    // Cerrar modales al hacer clic fuera
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+          this.classList.remove('active');
+        }
+      });
+    });
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', function() {
+      renderizarEjercicios();
+      renderizarComidas();
+    });
+  </script>
+</body>
+</html>

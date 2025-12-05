@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Gimnasio - {{ gimnasio.nombre }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+  body{ display:flex; min-height:100vh; background:#f4f6fc; }
+
+  /* Sidebar */
+  .sidebar{
+    width:220px;
+    background:linear-gradient(to bottom,#667eea,#764ba2);
+    padding:2rem 1rem;
+    color:#fff;
+    flex-shrink:0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar h2{ margin-bottom:2rem; text-align:center; font-size:1.5rem; }
+  .sidebar a{
+    display:block;
+    color:#fff;
+    text-decoration:none;
+    margin:1rem 0;
+    padding:.75rem 1rem;
+    border-radius:12px;
+    transition:background .2s ease;
+  }
+  .sidebar a:hover{ background:rgba(255,255,255,.20); }
+  .sidebar a.sidebar-item{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    margin:.5rem 0;
+    padding:.6rem .9rem;
+    background:transparent;
+  }
+  .sidebar a.sidebar-item:hover{ background:rgba(255,255,255,.18); }
+  .sidebar a.sidebar-profile-link{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:.45rem 1rem;
+    margin-top:.75rem;
+    border-radius:10px;
+    background:transparent;
+  }
+  .sidebar a.sidebar-profile-link:hover{ background:rgba(255,255,255,.15); }
+  .sidebar-avatar{
+    width:38px; height:38px;
+    border-radius:50%;
+    object-fit:cover;
+    flex:0 0 38px;
+    border:2px solid rgba(255,255,255,.6);
+    display:block;
+  }
+  .sidebar-label{
+    display:flex;
+    align-items:center;
+    height:38px;
+    line-height:1;
+    font-size:1rem; font-weight:600; color:#fff;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:140px;
+  }
+  .sidebar-logout {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+  .sidebar-logout a {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+  }
+  .sidebar-logout a:hover {
+    background: rgba(231, 76, 60, 0.8);
+    border-color: rgba(231, 76, 60, 0.5);
+  }
+
+  /* Main */
+  .main{ flex:1; padding:2rem; overflow-y:auto; }
+
+  /* Dashboard KPIs */
+  .dashboard{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card{
+    background:#fff; border-radius:20px; padding:1.5rem;
+    box-shadow:0 8px 20px rgba(0,0,0,.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow:0 12px 25px rgba(0,0,0,.1);
+  }
+  .card h3{ margin-bottom:.5rem; color:#333; font-size:1rem; }
+  .kpi-value{ font-size:2rem; font-weight:700; color:#222; margin: 0.5rem 0; }
+
+  /* Stats section */
+  .stats-section { margin-top: 2rem; }
+  .stats-section h2{ color:#2c3e50; margin-bottom: 1.5rem; font-size: 1.5rem; }
+  .recent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+  .recent-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 6px 16px rgba(0,0,0,.06);
+  }
+  .recent-card h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+  }
+  .recent-list {
+    list-style: none;
+    padding: 0;
+  }
+  .recent-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f5f5f5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .recent-item:last-child {
+    border-bottom: none;
+  }
+  .recent-info {
+    flex: 1;
+  }
+  .recent-name {
+    font-weight: 600;
+    color: #333;
+  }
+  .recent-meta {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+  }
+  .recent-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .status-pendiente {
+    background: #fff3cd;
+    color: #856404;
+  }
+  .status-aceptada {
+    background: #d4edda;
+    color: #155724;
+  }
+  .status-rechazada {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  .status-activo {
+    background: #d4edda;
+    color: #155724;
+  }
+  .no-data{
+    padding:2rem; text-align:center; color:#777; font-style:italic;
+  }
+  .btn-small {
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .btn-primary-small {
+    background: #667eea;
+    color: white;
+  }
+  .btn-primary-small:hover {
+    background: #5a6fd8;
+  }
+  .btn {
+    padding:.75rem 1.5rem;
+    border-radius:10px;
+    border:1px solid #d9deea;
+    background:#f6f7fb;
+    cursor:pointer;
+    font-size:1rem;
+    font-weight:600;
+  }
+  .btn.primary {
+    background:#667eea;
+    border-color:#667eea;
+    color:#fff;
+  }
+  .btn:hover{ opacity:0.9; transform:translateY(-2px); }
+
+  /* Buscador lateral */
+  #buscadorLateral{
+    position:fixed; top:0; right:-400px; width:360px; height:100%;
+    background:#fff; box-shadow:-2px 0 12px rgba(0,0,0,.1);
+    padding:1.5rem; transition:right .3s ease; z-index:1000; overflow-y:auto;
+  }
+  .buscador-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .buscador-header h3 {
+    margin: 0;
+    color: #333;
+  }
+  .buscador-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0.25rem;
+    line-height: 1;
+  }
+  .buscador-close:hover {
+    color: #333;
+  }
+  .resultado-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .resultado-item:hover {
+    background-color: #f8f9fa;
+  }
+  .resultado-item:last-child {
+    border-bottom: none;
+  }
+  .resultado-nombre {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    padding: 0.25rem 0;
+    border-radius: 4px;
+    transition: color 0.2s ease;
+  }
+  .resultado-nombre:hover {
+    color: #667eea;
+    text-decoration: underline;
+  }
+  .resultado-tipo {
+    font-size: 0.85rem;
+    color: #666;
+    text-transform: capitalize;
+  }
+  .resultado-accion {
+    margin-top: 0.5rem;
+  }
+  .btn-agregar {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .btn-agregar:hover {
+    background: #5a6fd8;
+  }
+  .estado-amistad {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+  }
+  .cargando {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+  }
+  .sin-resultados {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+    font-style: italic;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .recent-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 180px;
+      padding: 1rem 0.5rem;
+    }
+    .main {
+      padding: 1rem;
+    }
+    .dashboard {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+    .recent-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Panel Gimnasio</h2>
+
+    <div class="sidebar-nav">
+      <a href="/panel-gimnasio" class="sidebar-item">
+        📊 Dashboard
+      </a>
+      <a href="/panel-gimnasio/infraestructura" class="sidebar-item">
+        🏋️ Infraestructura
+      </a>
+      <a href="/panel-gimnasio/peticiones" class="sidebar-item">
+        📋 Peticiones
+      </a>
+      <a href="/panel-gimnasio/productos" class="sidebar-item">
+        🛍️ Productos
+      </a>
+      <a href="/panel-gimnasio/clientes" class="sidebar-item">
+        👥 Clientes
+      </a>
+      <a href="/panel-gimnasio/cobros" class="sidebar-item">
+  💰 Cobros
+</a>
+      <a href="#" id="link-buscar" class="sidebar-item" onclick="abrirBuscador()">
+        🔍 Buscar
+      </a>
+      <a href="/notificaciones" id="link-notificaciones" class="sidebar-item">
+        🔔 Notificaciones
+      </a>
+    </div>
+
+    <!-- Perfil -->
+    <a href="/mi-perfil" class="sidebar-item sidebar-profile-link">
+      <img
+        class="sidebar-avatar"
+        src="{{ request.url_for('static', path=gimnasio.imagen_url or DEFAULT_AVATAR_REL) }}"
+        alt="Logo de {{ gimnasio.nombre }}"
+        onerror="this.onerror=null; this.src='{{ request.url_for('static', path=DEFAULT_AVATAR_REL) }}'"
+      />
+      <span class="sidebar-label">{{ gimnasio.nombre }}</span>
+    </a>
+
+    <!-- Cerrar sesión -->
+    <div class="sidebar-logout">
+      <a href="/logout" class="sidebar-item">
+        🚪 Cerrar Sesión
+      </a>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- Título -->
+    <div style="margin-bottom: 2rem;">
+      <h1 style="color: #2c3e50; margin-bottom: 0.5rem;">Dashboard - {{ gimnasio.nombre }}</h1>
+      <p style="color: #666;">Bienvenido al panel de administración de tu gimnasio</p>
+    </div>
+
+    <!-- KPIs -->
+    <div class="dashboard">
+      <div class="card">
+        <h3>👥 Clientes Activos</h3>
+        <div class="kpi-value">{{ clientes_activos }}</div>
+      </div>
+
+      <div class="card">
+        <h3>📋 Peticiones Pendientes</h3>
+        <div class="kpi-value">{{ peticiones_pendientes }}</div>
+      </div>
+
+      <div class="card">
+        <h3>🛍️ Productos Activos</h3>
+        <div class="kpi-value">{{ productos_activos }}</div>
+      </div>
+
+      <div class="card">
+        <h3>💰 Ingresos Mensuales</h3>
+        <div class="kpi-value">{{ ingresos_mensuales|round(2) }}€</div>
+      </div>
+    </div>
+
+    <!-- Actividad Reciente -->
+    <div class="stats-section">
+      <h2>Actividad Reciente</h2>
+
+      <div class="recent-grid">
+        <!-- Peticiones recientes -->
+        <div class="recent-card">
+          <h3>📋 Peticiones Recientes</h3>
+          {% if peticiones_recientes %}
+            <ul class="recent-list">
+              {% for peticion in peticiones_recientes %}
+                <li class="recent-item">
+                  <div class="recent-info">
+                    <div class="recent-name">{{ peticion.usuario.nombre if peticion.usuario else 'Cliente' }}</div>
+                    <div class="recent-meta">
+                      {{ peticion.tipo|title }} • {{ peticion.fecha_creacion.strftime('%d/%m/%Y') }}
+                    </div>
+                  </div>
+                  <span class="recent-status status-{{ peticion.estado }}">
+                    {{ peticion.estado|title }}
+                  </span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="no-data">No hay peticiones recientes</div>
+          {% endif %}
+          <div style="margin-top: 1rem;">
+            <a href="/panel-gimnasio/peticiones" class="btn-small btn-primary-small">Ver todas las peticiones</a>
+          </div>
+        </div>
+
+        <!-- Clientes recientes -->
+        <div class="recent-card">
+          <h3>👥 Clientes Recientes</h3>
+          {% if clientes_recientes %}
+            <ul class="recent-list">
+              {% for cliente in clientes_recientes %}
+                <li class="recent-item">
+                  <div class="recent-info">
+                    <div class="recent-name">{{ cliente.nombre }}</div>
+                    <div class="recent-meta">{{ cliente.email }}</div>
+                  </div>
+                  <span class="recent-status status-activo">Activo</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="no-data">No hay clientes recientes</div>
+          {% endif %}
+          <div style="margin-top: 1rem;">
+            <a href="/panel-gimnasio/clientes" class="btn-small btn-primary-small">Ver todos los clientes</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="stats-section">
+      <h2>Acciones Rápidas</h2>
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="window.location.href='/panel-gimnasio/productos'">
+          🛍️ Gestionar Productos
+        </button>
+        <button class="btn btn-primary" onclick="window.location.href='/panel-gimnasio/infraestructura'">
+          🏋️ Gestionar Infraestructura
+        </button>
+        <button class="btn btn-primary" onclick="window.location.href='/panel-gimnasio/peticiones'">
+          📋 Revisar Peticiones
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de búsqueda lateral -->
+  <div id="buscadorLateral">
+    <div class="buscador-header">
+      <h3>Buscar usuarios y gimnasios</h3>
+      <button class="buscador-close" onclick="cerrarBuscador()">&times;</button>
+    </div>
+
+    <input
+      type="text"
+      id="inputBusqueda"
+      placeholder="Escribe un nombre..."
+      style="width:100%; padding:0.75rem; margin-bottom:1rem; border-radius:8px; border:1px solid #ddd;"
+      oninput="buscarEnTiempoReal(this.value)"
+    >
+
+    <div id="estadoBusqueda"></div>
+    <ul id="resultadosBusqueda" style="margin-top:1rem; list-style:none; padding:0;"></ul>
+  </div>
+
+  <script>
+    /* ====== BUSCADOR LATERAL ====== */
+    let timeoutBusqueda = null;
+
+    function abrirBuscador() {
+      const panel = document.getElementById('buscadorLateral');
+      if (panel) {
+        panel.style.right = '0';
+        setTimeout(() => {
+          const input = document.getElementById('inputBusqueda');
+          if (input) {
+            input.focus();
+            input.value = '';
+          }
+          mostrarEstadoInicial();
+        }, 100);
+      }
+    }
+
+    function cerrarBuscador() {
+      const panel = document.getElementById('buscadorLateral');
+      if (panel) {
+        panel.style.right = '-400px';
+      }
+    }
+
+    function mostrarEstadoInicial() {
+      const estado = document.getElementById('estadoBusqueda');
+      const resultados = document.getElementById('resultadosBusqueda');
+
+      if (estado) {
+        estado.innerHTML = '<div class="sin-resultados">Escribe algo para buscar usuarios, gimnasios o profesionales</div>';
+      }
+      if (resultados) {
+        resultados.innerHTML = '';
+      }
+    }
+
+    function mostrarCargando() {
+      const estado = document.getElementById('estadoBusqueda');
+      const resultados = document.getElementById('resultadosBusqueda');
+
+      if (estado) {
+        estado.innerHTML = '<div class="cargando">Buscando...</div>';
+      }
+      if (resultados) {
+        resultados.innerHTML = '';
+      }
+    }
+
+    function verPerfil(urlPerfil) {
+      if (urlPerfil && urlPerfil !== '#') {
+        cerrarBuscador();
+        window.location.href = urlPerfil;
+      }
+    }
+
+    function mostrarResultados(resultados) {
+      const estado = document.getElementById('estadoBusqueda');
+      const contenedorResultados = document.getElementById('resultadosBusqueda');
+
+      if (estado) {
+        estado.innerHTML = '';
+      }
+
+      if (!contenedorResultados) return;
+
+      if (!resultados || resultados.length === 0) {
+        contenedorResultados.innerHTML = '<div class="sin-resultados">No se encontraron resultados</div>';
+        return;
+      }
+
+      const html = resultados.map(item => {
+        let botonHtml = '';
+        let estadoHtml = '';
+
+        let perfilUrl = '#';
+        switch(item.tipo) {
+            case 'Gimnasio':
+                perfilUrl = `/gimnasio/${item.id}`;
+                break;
+            case 'Usuario':
+                perfilUrl = `/perfil/${item.id}`;
+                break;
+            case 'Entrenador':
+            case 'Dietista':
+                perfilUrl = `/profesional/${item.id}`;
+                break;
+        }
+
+        if (item.tipo === 'Usuario') {
+          if (item.estado_amistad === 'no_amigos') {
+            botonHtml = `<button class="btn-agregar" onclick="agregarAmigo(${item.id})">Agregar amigo</button>`;
+          } else if (item.estado_amistad === 'pendiente') {
+            estadoHtml = `<div class="estado-amistad">Solicitud enviada</div>`;
+          } else if (item.estado_amistad === 'aceptado') {
+            estadoHtml = `<div class="estado-amistad">Ya son amigos</div>`;
+          }
+        }
+
+        return `
+          <li class="resultado-item">
+            <div class="resultado-nombre" onclick="verPerfil('${perfilUrl}')">
+              ${item.nombre}
+            </div>
+            <div class="resultado-tipo">${item.tipo}</div>
+            ${estadoHtml}
+            <div class="resultado-accion">${botonHtml}</div>
+          </li>
+        `;
+      }).join('');
+
+      contenedorResultados.innerHTML = html;
+    }
+
+    function buscarEnTiempoReal(query) {
+      if (timeoutBusqueda) {
+        clearTimeout(timeoutBusqueda);
+      }
+
+      if (!query || query.trim().length < 2) {
+        mostrarEstadoInicial();
+        return;
+      }
+
+      mostrarCargando();
+
+      timeoutBusqueda = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/buscar?q=${encodeURIComponent(query.trim())}`);
+          if (!response.ok) {
+            throw new Error('Error en la búsqueda');
+          }
+          const resultados = await response.json();
+          mostrarResultados(resultados);
+        } catch (error) {
+          console.error('Error buscando:', error);
+          const estado = document.getElementById('estadoBusqueda');
+          if (estado) {
+            estado.innerHTML = '<div class="sin-resultados">Error al buscar. Intenta nuevamente.</div>';
+          }
+        }
+      }, 300);
+    }
+
+    async function agregarAmigo(amigoId) {
+      try {
+        const response = await fetch('/amigos/agregar-ajax', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `amigo_id=${amigoId}`
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'ok') {
+          const boton = document.querySelector(`button[onclick="agregarAmigo(${amigoId})"]`);
+          if (boton) {
+            if (data.estado === 'pendiente') {
+              boton.outerHTML = '<div class="estado-amistad">Solicitud enviada</div>';
+            } else {
+              boton.outerHTML = '<div class="estado-amistad">Ya son amigos</div>';
+            }
+          }
+        } else {
+          alert('Error: ' + data.msg);
+        }
+      } catch (error) {
+        console.error('Error agregando amigo:', error);
+        alert('Error al agregar amigo');
+      }
+    }
+
+    // Cerrar buscador al hacer clic fuera
+    document.addEventListener('click', (event) => {
+      const buscador = document.getElementById('buscadorLateral');
+      const target = event.target;
+
+      if (buscador &&
+          !buscador.contains(target) &&
+          target.id !== 'link-buscar' &&
+          !target.closest('#link-buscar')) {
+        cerrarBuscador();
+      }
+    });
+
+    // Cerrar con Escape
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        cerrarBuscador();
+      }
+    });
+
+    /* Init */
+    document.addEventListener('DOMContentLoaded', () => {
+      mostrarEstadoInicial();
+    });
+  </script>
+</body>
+</html>

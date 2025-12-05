@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
   /* Reset básico */
-  { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
   body{ display:flex; min-height:100vh; background:#f4f6fc; }
 
   /* ============================ */
@@ -19,6 +19,8 @@
     padding:2rem 1rem;
     color:#fff;
     flex-shrink:0;
+    display: flex;
+    flex-direction: column;
   }
   .sidebar h2{ margin-bottom:2rem; text-align:center; font-size:1.5rem; }
 
@@ -83,6 +85,32 @@
   .sidebar a.sidebar-item.is-active,
   .sidebar a.sidebar-profile-link.is-active{
     background:rgba(255,255,255,.25);
+  }
+
+  /* ============================ */
+  /* Botón de cerrar sesión */
+  /* ============================ */
+  .sidebar-logout {
+    margin-top: auto; /* Empuja el botón hacia la parte inferior */
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .sidebar-logout a {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-logout a:hover {
+    background: rgba(231, 76, 60, 0.8);
+    border-color: rgba(231, 76, 60, 0.5);
   }
 
   /* ============================ */
@@ -176,6 +204,120 @@
   }
 
   /* ============================ */
+  /* Mejoras para el buscador lateral */
+  /* ============================ */
+  .buscador-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .buscador-header h3 {
+    margin: 0;
+    color: #333;
+  }
+
+  .buscador-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0.25rem;
+    line-height: 1;
+  }
+
+  .buscador-close:hover {
+    color: #333;
+  }
+
+  .resultado-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+  }
+
+  .resultado-item:hover {
+    background-color: #f8f9fa;
+  }
+
+  .resultado-item:last-child {
+    border-bottom: none;
+  }
+
+  .resultado-nombre {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+  }
+
+  .resultado-nombre a {
+    display: block;
+    text-decoration: none;
+    color: #333;
+    font-weight: 600;
+    padding: 0.25rem 0;
+  }
+
+  .resultado-nombre a:hover {
+    text-decoration: underline;
+    color: #667eea;
+  }
+
+  .resultado-tipo {
+    font-size: 0.85rem;
+    color: #666;
+    text-transform: capitalize;
+  }
+
+  .resultado-accion {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #eee;
+  }
+
+  .btn-agregar {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .btn-agregar:hover {
+    background: #5a6fd8;
+  }
+
+  .btn-agregar:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .estado-amistad {
+    font-size: 0.8rem;
+    color: #666;
+    font-style: italic;
+  }
+
+  .cargando {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+  }
+
+  .sin-resultados {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+    font-style: italic;
+  }
+
+  /* ============================ */
   /* Modal ligero reutilizable */
   /* ============================ */
   .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; z-index:2000; }
@@ -214,7 +356,7 @@
     <a href="/mis-entrenos">Mis Entrenos</a>
     <a href="/mis-dietas">Mis Dietas</a>
     <a href="/formulario-entreno">Crear Plan</a>
-    <a href="/registrar-progreso">Registrar Progreso</a>
+    <a href="/mis-comidas">Registrar Progreso</a>
     <a href="/ajustes">Ajustes</a>
 
     {% if gimnasio_principal %}
@@ -224,7 +366,7 @@
     {% endif %}
 
     <a href="/gimnasios">Gimnasios que sigo</a>
-    <a href="#" onclick="abrirBuscador()">🔍 Buscar</a>
+    <a href="#" id="link-buscar" onclick="abrirBuscador()">🔍 Buscar</a>
     <a href="/notificaciones" id="link-notificaciones">
       🔔 Notificaciones
       {% if num_noti_noleidas and num_noti_noleidas > 0 %}
@@ -244,6 +386,12 @@
   <span class="sidebar-label">{{ usuario.nombre or 'Tu perfil' }}</span>
 </a>
 
+  <!-- Botón de cerrar sesión -->
+  <div class="sidebar-logout">
+    <a href="/login" class="sidebar-item">
+      🚪 Cerrar Sesión
+    </a>
+  </div>
 
 </div>
   <!-- MAIN -->
@@ -421,8 +569,23 @@
 
   <!-- Panel de búsqueda lateral -->
   <div id="buscadorLateral">
-    <h3>Buscar usuarios y gimnasios</h3>
-    <input type="text" id="inputBusqueda" placeholder="Escribe un nombre..." style="width:100%; padding:0.5rem; margin-top:1rem; border-radius:8px; border:1px solid #ccc;">
+    <div class="buscador-header">
+      <h3>Buscar usuarios y gimnasios</h3>
+      <button class="buscador-close" onclick="cerrarBuscador()">&times;</button>
+    </div>
+
+    <input
+      type="text"
+      id="inputBusqueda"
+      placeholder="Escribe un nombre..."
+      style="width:100%; padding:0.75rem; margin-bottom:1rem; border-radius:8px; border:1px solid #ddd;"
+      oninput="buscarEnTiempoReal(this.value)"
+    >
+
+    <div id="estadoBusqueda">
+      <!-- Aquí se mostrarán mensajes de carga, resultados, etc. -->
+    </div>
+
     <ul id="resultadosBusqueda" style="margin-top:1rem; list-style:none; padding:0;"></ul>
   </div>
 
@@ -436,14 +599,6 @@
       if (!m) return `rgba(102,126,234,${alpha})`;
       const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
       return `rgba(${r},${g},${b},${alpha})`;
-    }
-    function abrirBuscador(){
-      const p = document.getElementById('buscadorLateral');
-      if (p) p.style.right = '0';
-    }
-    function cerrarBuscador(){
-      const p = document.getElementById('buscadorLateral');
-      if (p) p.style.right = '-400px';
     }
 
     /* Opciones de estadísticas/intervalos (para menús) */
@@ -465,6 +620,239 @@
       { key: "6m", label: "Últimos 6 meses" },
       { key: "1y", label: "Último año" },
     ];
+
+    /* ====== BUSCADOR LATERAL ====== */
+
+    let timeoutBusqueda = null;
+
+    function abrirBuscador() {
+      const panel = document.getElementById('buscadorLateral');
+      if (panel) {
+        panel.style.right = '0';
+        // Enfocar el input cuando se abre
+        setTimeout(() => {
+          const input = document.getElementById('inputBusqueda');
+          if (input) {
+            input.focus();
+            input.value = ''; // Limpiar búsqueda anterior
+          }
+          mostrarEstadoInicial();
+        }, 100);
+      }
+    }
+
+    function cerrarBuscador() {
+      const panel = document.getElementById('buscadorLateral');
+      if (panel) {
+        panel.style.right = '-400px';
+      }
+    }
+
+    function mostrarEstadoInicial() {
+      const estado = document.getElementById('estadoBusqueda');
+      const resultados = document.getElementById('resultadosBusqueda');
+
+      if (estado) {
+        estado.innerHTML = '<div class="sin-resultados">Escribe algo para buscar usuarios, gimnasios o profesionales</div>';
+      }
+      if (resultados) {
+        resultados.innerHTML = '';
+      }
+    }
+
+    function mostrarCargando() {
+      const estado = document.getElementById('estadoBusqueda');
+      const resultados = document.getElementById('resultadosBusqueda');
+
+      if (estado) {
+        estado.innerHTML = '<div class="cargando">Buscando...</div>';
+      }
+      if (resultados) {
+        resultados.innerHTML = '';
+      }
+    }
+
+    function mostrarResultados(resultados) {
+      const estado = document.getElementById('estadoBusqueda');
+      const contenedorResultados = document.getElementById('resultadosBusqueda');
+
+      if (estado) {
+        estado.innerHTML = '';
+      }
+
+      if (!contenedorResultados) return;
+
+      if (!resultados || resultados.length === 0) {
+        contenedorResultados.innerHTML = '<div class="sin-resultados">No se encontraron resultados</div>';
+        return;
+      }
+
+      const html = resultados.map(item => {
+        let botonHtml = '';
+        let estadoHtml = '';
+        let url = item.url || '#';
+
+        // Crear enlace para el nombre que sea clicable
+        const nombreConEnlace = `
+          <a href="${url}"
+             style="color: #333; text-decoration: none; display: block;"
+             onmouseover="this.style.textDecoration='underline'"
+             onmouseout="this.style.textDecoration='none'"
+             title="Ver perfil">
+            ${item.nombre}
+          </a>
+        `;
+
+        if (item.tipo === 'Usuario') {
+          if (item.estado_amistad === 'no_amigos') {
+            botonHtml = `<button class="btn-agregar" onclick="agregarAmigo(${item.id})">Agregar amigo</button>`;
+          } else if (item.estado_amistad === 'pendiente') {
+            estadoHtml = `<div class="estado-amistad">Solicitud enviada</div>`;
+          } else if (item.estado_amistad === 'aceptado') {
+            estadoHtml = `<div class="estado-amistad">Ya son amigos</div>`;
+          }
+        } else if (item.tipo === 'Gimnasio') {
+          if (!item.unido) {
+            botonHtml = `<button class="btn-agregar" onclick="unirseGimnasio(${item.id})">Unirse</button>`;
+          } else {
+            estadoHtml = `<div class="estado-amistad">Ya estás unido</div>`;
+          }
+        } else if (item.tipo === 'Entrenador' || item.tipo === 'Dietista') {
+          if (!item.seguido) {
+            botonHtml = `<button class="btn-agregar" onclick="seguirProfesional(${item.id}, '${item.tipo.toLowerCase()}')">Seguir</button>`;
+          } else {
+            estadoHtml = `<div class="estado-amistad">Ya sigues a este profesional</div>`;
+          }
+        }
+
+        return `
+          <li class="resultado-item">
+            <div class="resultado-nombre">${nombreConEnlace}</div>
+            <div class="resultado-tipo">${item.tipo}</div>
+            ${estadoHtml}
+            <div class="resultado-accion">${botonHtml}</div>
+          </li>
+        `;
+      }).join('');
+
+      contenedorResultados.innerHTML = html;
+    }
+
+    function buscarEnTiempoReal(query) {
+      // Limpiar timeout anterior
+      if (timeoutBusqueda) {
+        clearTimeout(timeoutBusqueda);
+      }
+
+      // Si la query está vacía, mostrar estado inicial
+      if (!query || query.trim().length < 2) {
+        mostrarEstadoInicial();
+        return;
+      }
+
+      // Mostrar estado de carga
+      mostrarCargando();
+
+      // Esperar 300ms antes de buscar (debounce)
+      timeoutBusqueda = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/buscar?q=${encodeURIComponent(query.trim())}`);
+          if (!response.ok) {
+            throw new Error('Error en la búsqueda');
+          }
+          const resultados = await response.json();
+          mostrarResultados(resultados);
+        } catch (error) {
+          console.error('Error buscando:', error);
+          const estado = document.getElementById('estadoBusqueda');
+          if (estado) {
+            estado.innerHTML = '<div class="sin-resultados">Error al buscar. Intenta nuevamente.</div>';
+          }
+        }
+      }, 300);
+    }
+
+    // Funciones para las acciones
+    async function agregarAmigo(amigoId) {
+      try {
+        const response = await fetch('/amigos/agregar-ajax', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `amigo_id=${amigoId}`
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'ok') {
+          // Actualizar la interfaz
+          const boton = document.querySelector(`button[onclick="agregarAmigo(${amigoId})"]`);
+          if (boton) {
+            if (data.estado === 'pendiente') {
+              boton.outerHTML = '<div class="estado-amistad">Solicitud enviada</div>';
+            } else {
+              boton.outerHTML = '<div class="estado-amistad">Ya son amigos</div>';
+            }
+          }
+        } else {
+          alert('Error: ' + data.msg);
+        }
+      } catch (error) {
+        console.error('Error agregando amigo:', error);
+        alert('Error al agregar amigo');
+      }
+    }
+
+    async function unirseGimnasio(gimnasioId) {
+      try {
+        const response = await fetch('/unirse-gimnasio', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `gimnasio_id=${gimnasioId}`
+        });
+
+        if (response.ok) {
+          // Actualizar la interfaz
+          const boton = document.querySelector(`button[onclick="unirseGimnasio(${gimnasioId})"]`);
+          if (boton) {
+            boton.outerHTML = '<div class="estado-amistad">Ya estás unido</div>';
+          }
+        } else {
+          alert('Error al unirse al gimnasio');
+        }
+      } catch (error) {
+        console.error('Error uniéndose al gimnasio:', error);
+        alert('Error al unirse al gimnasio');
+      }
+    }
+
+    async function seguirProfesional(profesionalId, tipo) {
+      try {
+        const response = await fetch('/profesionales/unirse', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `profesional_id=${profesionalId}&tipo=${tipo}`
+        });
+
+        if (response.ok) {
+          // Actualizar la interfaz
+          const boton = document.querySelector(`button[onclick="seguirProfesional(${profesionalId}, '${tipo}')"]`);
+          if (boton) {
+            boton.outerHTML = '<div class="estado-amistad">Ya sigues a este profesional</div>';
+          }
+        } else {
+          alert(`Error al seguir al ${tipo}`);
+        }
+      } catch (error) {
+        console.error(`Error siguiendo al ${tipo}:`, error);
+        alert(`Error al seguir al ${tipo}`);
+      }
+    }
 
     /* ====== Modal ligero reutilizable ====== */
     const Modal = (() => {
@@ -727,8 +1115,31 @@
       }
     });
 
+    // Cerrar buscador al hacer clic fuera
+    document.addEventListener('click', (event) => {
+      const buscador = document.getElementById('buscadorLateral');
+      const target = event.target;
+
+      if (buscador &&
+          !buscador.contains(target) &&
+          target.id !== 'link-buscar' &&
+          !target.closest('#link-buscar')) {
+        cerrarBuscador();
+      }
+    });
+
+    // También cerrar con Escape
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        cerrarBuscador();
+      }
+    });
+
     /* Init */
     document.addEventListener('DOMContentLoaded', ()=>{
+      // Inicializar el buscador
+      mostrarEstadoInicial();
+
       // comparativo
       const card = document.querySelector('.chart-card[data-chart-id="comparativo"]');
       if (card){
