@@ -1,5 +1,5 @@
 from __future__ import annotations
-from sqlalchemy import Table, String, Integer, DateTime, Text, ForeignKey, Boolean, UniqueConstraint, Column, Numeric
+from sqlalchemy import Table, String, Integer, DateTime, Text, ForeignKey, Boolean, UniqueConstraint, Column, Numeric, Float
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -107,15 +107,28 @@ class SesionEntreno(Base):
     usuario = relationship("Usuario")
     entrenamiento = relationship("Entrenamiento")
 
+
+# Añadir estos campos al modelo RegistroComida existente
 class RegistroComida(Base):
     __tablename__ = "comida_imagenes"
     id: Mapped[int] = mapped_column(primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
     imagen_url: Mapped[str] = mapped_column(String(255), nullable=False)
     fecha_subida: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    analisis_json: Mapped[dict] = mapped_column(JSONB)
-    comentarios: Mapped[str] = mapped_column(Text)
-    fecha = Column(DateTime, default=datetime.utcnow)
+    analisis_json: Mapped[dict] = mapped_column(JSONB, nullable=True)
+    comentarios: Mapped[str] = mapped_column(Text, nullable=True)
+    fecha: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # NUEVOS CAMPOS PARA NUTRICIÓN
+    descripcion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    calorias: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    proteinas_g: Mapped[Optional[float]] = mapped_column(Numeric(5, 1), nullable=True)
+    carbohidratos_g: Mapped[Optional[float]] = mapped_column(Numeric(5, 1), nullable=True)
+    grasas_g: Mapped[Optional[float]] = mapped_column(Numeric(5, 1), nullable=True)
+    fibra_g: Mapped[Optional[float]] = mapped_column(Numeric(5, 1), nullable=True)
+    azucar_g: Mapped[Optional[float]] = mapped_column(Numeric(5, 1), nullable=True)
+    es_automatico: Mapped[bool] = mapped_column(Boolean, default=False)  # True si IA, False si manual
+    tipo_comida: Mapped[str] = mapped_column(String(20), default="otro")  # desayuno, almuerzo, cena, snack
 
     usuario = relationship("Usuario")
 
@@ -166,6 +179,7 @@ class Gimnasio(Base):
     ciudad: Mapped[str] = mapped_column(String)
     direccion: Mapped[str] = mapped_column(String)
     descripcion: Mapped[str] = mapped_column(String)
+    imagen_url: Mapped[str] = mapped_column(String, default="uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png")  # AGREGAR ESTA LÍNEA
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     usuarios = relationship("UsuarioGimnasio", back_populates="gimnasio", cascade="all, delete-orphan")
@@ -384,6 +398,55 @@ class WorkoutSet(Base):
     bodyweight: Mapped[float] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     exercise = relationship("Exercise")
+
+
+class PeticionPlan(Base):
+    __tablename__ = "peticiones_planes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    gimnasio_id = Column(Integer, ForeignKey("usuarios.id"))
+    tipo = Column(String)  # 'entreno', 'dieta', 'mixto'
+    datos_formulario = Column(JSON)  # Datos del formulario del cliente
+    estado = Column(String, default="pendiente")  # pendiente, aceptada, rechazada, completada
+    fecha_creacion = Column(DateTime, default=datetime.now)
+    fecha_respuesta = Column(DateTime, nullable=True)
+
+    usuario = relationship("Usuario", foreign_keys=[usuario_id])
+    gimnasio = relationship("Usuario", foreign_keys=[gimnasio_id])
+
+
+class ProductoGimnasio(Base):
+    __tablename__ = "productos_gimnasio"
+
+    id = Column(Integer, primary_key=True, index=True)
+    gimnasio_id = Column(Integer, ForeignKey("usuarios.id"))
+    nombre = Column(String)
+    descripcion = Column(Text, nullable=True)
+    precio = Column(Float)
+    tipo = Column(String)  # 'suplemento', 'ropa', 'accesorio', 'servicio'
+    imagen_url = Column(String, nullable=True)
+    activo = Column(Boolean, default=True)
+    fecha_creacion = Column(DateTime, default=datetime.now)
+
+    gimnasio = relationship("Usuario")
+
+
+class Pago(Base):
+    __tablename__ = "pagos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    gimnasio_id = Column(Integer, ForeignKey("usuarios.id"))
+    monto = Column(Float)
+    concepto = Column(String)  # 'cuota_mensual', 'plan_personalizado', 'producto'
+    estado = Column(String, default="pendiente")  # pendiente, pagado, vencido
+    fecha_vencimiento = Column(Date)
+    fecha_pago = Column(DateTime, nullable=True)
+    fecha_creacion = Column(DateTime, default=datetime.now)
+
+    usuario = relationship("Usuario", foreign_keys=[usuario_id])
+    gimnasio = relationship("Usuario", foreign_keys=[gimnasio_id])
 
 #class ProgressDaily(Base):
  #   __tablename__ = "progress_daily"

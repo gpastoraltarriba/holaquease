@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mis Comidas - Registro Nutricional</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  /* Reset básico */
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+  body{ display:flex; min-height:100vh; background:#f4f6fc; }
+
+  /* ============================ */
+  /* Sidebar */
+  /* ============================ */
+  .sidebar{
+    width:220px;
+    background:linear-gradient(to bottom,#667eea,#764ba2);
+    padding:2rem 1rem;
+    color:#fff;
+    flex-shrink:0;
+  }
+  .sidebar h2{ margin-bottom:2rem; text-align:center; font-size:1.5rem; }
+
+  /* Estilo base para enlaces del sidebar */
+  .sidebar a{
+    display:block;                     /* base */
+    color:#fff;
+    text-decoration:none;
+    margin:1rem 0;
+    padding:.75rem 1rem;
+    border-radius:12px;
+    transition:background .2s ease;
+  }
+  .sidebar a:hover{ background:rgba(255,255,255,.20); }
+
+  /* --- Ítems horizontales (icono/imagen + texto) --- */
+  /* AUMENTAMOS ESPECIFICIDAD para sobrescribir ".sidebar a" */
+  .sidebar a.sidebar-item{
+    display:flex;                      /* 👈 fila */
+    align-items:center;                /* 👈 centra verticalmente */
+    gap:.65rem;
+    margin:.5rem 0;                    /* un poco menos de espacio */
+    padding:.6rem .9rem;               /* más compacto */
+    background:transparent;
+  }
+  .sidebar a.sidebar-item:hover{ background:rgba(255,255,255,.18); }
+
+  /* Ítem de perfil: avatar + nombre en una fila */
+  .sidebar a.sidebar-profile-link{
+    display:flex;                      /* asegura flex frente a display:block */
+    align-items:center;                /* texto centrado con el avatar */
+    gap:10px;
+    padding:.45rem 1rem;
+    margin-top:.75rem;
+    border-radius:10px;
+    background:transparent;
+  }
+  .sidebar a.sidebar-profile-link:hover{ background:rgba(255,255,255,.15); }
+
+  /* Avatar del usuario */
+  .sidebar-avatar{
+    width:38px; height:38px;
+    border-radius:50%;
+    object-fit:cover;
+    flex:0 0 38px;                     /* no se deforma */
+    border:2px solid rgba(255,255,255,.6);
+    display:block;
+  }
+
+  /* Texto del nombre justo a la derecha y centrado */
+  .sidebar-label{
+    display:flex;                      /* para centrar su propio contenido */
+    align-items:center;                /* 🔥 centro vertical exacto */
+    height:38px;                       /* = altura avatar */
+    line-height:1;                     /* evita que baje por baseline */
+    font-size:1rem; font-weight:600; color:#fff;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:140px;                   /* ajusta si tu sidebar es más estrecho */
+  }
+
+  /* Estado activo opcional */
+  .sidebar a.sidebar-item.is-active,
+  .sidebar a.sidebar-profile-link.is-active{
+    background:rgba(255,255,255,.25);
+  }
+
+  /* ============================ */
+  /* Main */
+  /* ============================ */
+  .main{ flex:1; padding:2rem; overflow-y:auto; }
+
+  /* ============================ */
+  /* Cards generales */
+  /* ============================ */
+  .card{
+    background:#fff; border-radius:20px; padding:1.5rem;
+    box-shadow:0 8px 20px rgba(0,0,0,.05);
+    margin-bottom:1.5rem;
+  }
+
+  /* ============================ */
+  /* Estilos específicos para Mis Comidas */
+  /* ============================ */
+  .nutrition-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    background: white;
+  }
+  .nutrition-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .stat-item {
+    text-align: center;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 5px;
+  }
+  .stat-value {
+    font-weight: bold;
+    font-size: 1.1em;
+  }
+  .stat-label {
+    font-size: 0.8em;
+    color: #666;
+  }
+  .comida-image {
+    max-width: 200px;
+    border-radius: 8px;
+  }
+  .filters {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* Botones */
+  .btn{
+    padding:.55rem .8rem;
+    border-radius:10px;
+    border:1px solid #d9deea;
+    background:#f6f7fb;
+    cursor:pointer;
+    font-weight:600;
+  }
+  .btn.primary{
+    background:#667eea;
+    border-color:#667eea;
+    color:#fff;
+  }
+  .btn.primary:hover{
+    background:#5a6fd8;
+  }
+
+  /* Modal */
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.35);
+    display:none;
+    z-index:2000;
+  }
+  .modal{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    display:none;
+    z-index:2001;
+    width: min(92vw, 520px);
+    background:#fff;
+    border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.2);
+    padding:1.5rem;
+  }
+  .modal.open, .modal-backdrop.open{ display:block; }
+  .modal-card h3{ margin:.25rem 0 1rem; font-size:1.1rem; }
+  .modal-actions{
+    display:flex;
+    gap:.5rem;
+    justify-content:flex-end;
+    margin-top:1.5rem;
+  }
+  .modal-card label{
+    display:block;
+    font-size:.9rem;
+    color:#333;
+    margin:.5rem 0 .25rem;
+  }
+  .modal-card select,
+  .modal-card input[type="color"],
+  .modal-card input[type="text"],
+  .modal-card input[type="number"],
+  .modal-card textarea,
+  .modal-card input[type="file"]{
+    width:100%;
+    padding:.55rem .6rem;
+    border:1px solid #e2e5ee;
+    border-radius:10px;
+    font-family: 'Inter', sans-serif;
+  }
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+
+  /* Checkbox personalizado */
+  .checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .checkbox-container input[type="checkbox"] {
+    width: auto;
+  }
+
+  /* Centrar contenido */
+  .center-content {
+    text-align: center;
+    margin: 20px 0;
+  }
+
+  /* Estado activo para el enlace actual en el sidebar */
+  .sidebar a.active {
+    background: rgba(255,255,255,.25);
+  }
+
+  /* ============================ */
+  /* Panel de búsqueda lateral */
+  /* ============================ */
+  #buscadorLateral {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 350px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    padding: 20px;
+    transition: right 0.3s ease;
+    z-index: 1999;
+    overflow-y: auto;
+  }
+
+  #buscadorLateral.abierto {
+    right: 0;
+  }
+
+  #buscadorLateral h3 {
+    margin-bottom: 15px;
+    color: #333;
+  }
+
+  #cerrarBuscador {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #666;
+  }
+
+  #cerrarBuscador:hover {
+    color: #333;
+  }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Mi Panel</h2>
+
+    <div class="sidebar-nav">
+      <a href="/usuarios">Dashboard</a>
+      <a href="/mis-entrenos">Mis Entrenos</a>
+      <a href="/mis-dietas">Mis Dietas</a>
+      <a href="/formulario-entreno">Crear Plan</a>
+      <a href="/mis-comidas" class="active">Registrar Progreso</a>
+      <a href="/ajustes">Ajustes</a>
+
+      {% if gimnasio_principal %}
+        <hr style="margin: 1rem 0; border: none; border-top: 1px solid rgba(255,255,255,0.3)">
+        <h3 style="margin: 1rem 0 0.5rem; font-size: 1rem;">Gimnasio Principal</h3>
+        <a href="/gimnasio/{{ gimnasio_principal.id }}">{{ gimnasio_principal.nombre }}</a>
+      {% endif %}
+
+      <a href="/gimnasios">Gimnasios que sigo</a>
+      <a href="#" onclick="abrirBuscador()">🔍 Buscar</a>
+      <a href="/notificaciones" id="link-notificaciones">
+        🔔 Notificaciones
+        {% if num_noti_noleidas and num_noti_noleidas > 0 %}
+          <span style="background:#e74c3c; color:white; border-radius:8px; font-size:0.9rem; padding:2px 8px; margin-left:8px;">{{ num_noti_noleidas }}</span>
+        {% endif %}
+      </a>
+    </div>
+
+    <!-- Bloque de perfil abajo -->
+    <a href="/mi-perfil" class="sidebar-item sidebar-profile-link">
+      <img
+        class="sidebar-avatar"
+        src="{{ request.url_for('static', path=usuario.imagen_url) }}"
+        alt="Foto de {{ usuario.nombre or 'tu perfil' }}"
+        onerror="this.onerror=null; this.src='{{ request.url_for('static', path=DEFAULT_AVATAR_REL) }}'"
+      />
+      <span class="sidebar-label">{{ usuario.nombre or 'Tu perfil' }}</span>
+    </a>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <h1 style="margin-bottom: 1.5rem;">📊 Mi Registro Nutricional</h1>
+
+    <!-- Filtros -->
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">Filtros</h3>
+      <form id="filterForm" style="display: flex; gap: 10px; align-items: center;">
+        <label style="font-weight: 600;">Fecha:</label>
+        <input type="date" id="fechaFiltro" name="fecha" value="{{ fecha_filtro or '' }}" style="padding: 8px; border-radius: 8px; border: 1px solid #e2e5ee;">
+        <button type="submit" class="btn primary">Filtrar</button>
+        <button type="button" class="btn" onclick="resetFilters()">Ver Todo</button>
+      </form>
+    </div>
+
+    <!-- Totales del día -->
+    {% if totales %}
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">📈 Resumen del Día</h3>
+      <div class="nutrition-stats">
+        <div class="stat-item">
+          <div class="stat-value">{{ totales.calorias }}</div>
+          <div class="stat-label">Calorías</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ "%.1f"|format(totales.proteinas_g) }}g</div>
+          <div class="stat-label">Proteínas</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ "%.1f"|format(totales.carbohidratos_g) }}g</div>
+          <div class="stat-label">Carbohidratos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ "%.1f"|format(totales.grasas_g) }}g</div>
+          <div class="stat-label">Grasas</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Lista de comidas -->
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">🍽️ Mis Comidas Registradas</h3>
+
+      {% for comida in comidas %}
+      <div class="nutrition-card">
+        <div style="display: flex; gap: 15px; align-items: start;">
+          <img src="{{ comida.imagen_url }}" alt="Comida" class="comida-image">
+          <div style="flex: 1;">
+            <h4>{{ comida.tipo_comida|title }} - {{ comida.fecha.strftime('%H:%M') }}</h4>
+            <p>{{ comida.descripcion or 'Sin descripción' }}</p>
+
+            {% if comida.calorias %}
+            <div class="nutrition-stats">
+              <div class="stat-item">
+                <div class="stat-value">{{ comida.calorias }}</div>
+                <div class="stat-label">Cal</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{ "%.1f"|format(comida.proteinas_g or 0) }}g</div>
+                <div class="stat-label">Prot</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{ "%.1f"|format(comida.carbohidratos_g or 0) }}g</div>
+                <div class="stat-label">Carbs</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{ "%.1f"|format(comida.grasas_g or 0) }}g</div>
+                <div class="stat-label">Grasas</div>
+              </div>
+            </div>
+            <small style="color: #666;">
+              {% if comida.es_automatico %}
+              🧠 Estimado por IA
+              {% else %}
+              ✍️ Registro manual
+              {% endif %}
+            </small>
+            {% else %}
+            <p style="color: #999; font-style: italic;">Sin datos nutricionales</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="nutrition-card">
+        <p style="text-align: center; color: #666;">
+          No hay comidas registradas para esta fecha
+        </p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Botón para añadir comida -->
+    <div class="center-content">
+      <button onclick="showAddFoodModal()" class="btn primary" style="padding: 12px 24px; font-size: 16px;">
+        ➕ Añadir Comida
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal para añadir comida -->
+  <div id="addFoodModal" class="modal">
+    <div class="modal-card">
+      <h3>🍽️ Registrar Nueva Comida</h3>
+      <form id="addFoodForm" enctype="multipart/form-data">
+        <div style="margin: 10px 0;">
+          <label>Imagen de la comida:</label>
+          <input type="file" name="imagen" accept="image/*" required>
+        </div>
+
+        <div style="margin: 10px 0;">
+          <label>Descripción:</label>
+          <textarea name="descripcion" placeholder="¿Qué estás comiendo?" rows="3" style="width: 100%; padding: 8px;"></textarea>
+        </div>
+
+        <div style="margin: 10px 0;">
+          <label>Tipo de comida:</label>
+          <select name="tipo_comida" style="width: 100%; padding: 8px;">
+            <option value="desayuno">Desayuno</option>
+            <option value="almuerzo">Almuerzo</option>
+            <option value="cena">Cena</option>
+            <option value="snack">Snack</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+
+        <div class="checkbox-container">
+          <input type="checkbox" name="usar_ia" id="usarIA" checked>
+          <label for="usarIA">🧠 Analizar automáticamente con IA</label>
+        </div>
+
+        <!-- Campos manuales (se muestran si no se usa IA) -->
+        <div id="camposManuales" style="display: none;">
+          <h4>Datos Nutricionales Manuales</h4>
+          <div class="row">
+            <div>
+              <label>Calorías:</label>
+              <input type="number" name="calorias" placeholder="kcal">
+            </div>
+            <div>
+              <label>Proteínas (g):</label>
+              <input type="number" step="0.1" name="proteinas_g" placeholder="g">
+            </div>
+            <div>
+              <label>Carbohidratos (g):</label>
+              <input type="number" step="0.1" name="carbohidratos_g" placeholder="g">
+            </div>
+            <div>
+              <label>Grasas (g):</label>
+              <input type="number" step="0.1" name="grasas_g" placeholder="g">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn primary">Guardar</button>
+          <button type="button" class="btn" onclick="hideAddFoodModal()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Backdrop para modal de comida -->
+  <div id="addFoodBackdrop" class="modal-backdrop" onclick="hideAddFoodModal()"></div>
+
+  <!-- Panel de búsqueda lateral -->
+  <div id="buscadorLateral">
+    <button id="cerrarBuscador">✕</button>
+    <h3>Buscar usuarios y gimnasios</h3>
+    <input type="text" id="inputBusqueda" placeholder="Escribe un nombre..." style="width:100%; padding:0.5rem; margin-top:1rem; border-radius:8px; border:1px solid #ccc;">
+    <ul id="resultadosBusqueda" style="margin-top:1rem; list-style:none; padding:0;"></ul>
+  </div>
+
+  <!-- Backdrop para panel de búsqueda -->
+  <div id="buscadorBackdrop" class="modal-backdrop" onclick="cerrarBuscador()"></div>
+
+  <script>
+    // Mostrar/ocultar campos manuales según checkbox IA
+    document.getElementById('usarIA').addEventListener('change', function() {
+      document.getElementById('camposManuales').style.display =
+        this.checked ? 'none' : 'block';
+    });
+
+    function showAddFoodModal() {
+      document.getElementById('addFoodModal').classList.add('open');
+      document.getElementById('addFoodBackdrop').classList.add('open');
+    }
+
+    function hideAddFoodModal() {
+      document.getElementById('addFoodModal').classList.remove('open');
+      document.getElementById('addFoodBackdrop').classList.remove('open');
+    }
+
+    function resetFilters() {
+      window.location.href = '/mis-comidas';
+    }
+
+    function abrirBuscador(){
+      document.getElementById('buscadorLateral').classList.add('abierto');
+      document.getElementById('buscadorBackdrop').classList.add('open');
+    }
+
+    function cerrarBuscador(){
+      document.getElementById('buscadorLateral').classList.remove('abierto');
+      document.getElementById('buscadorBackdrop').classList.remove('open');
+    }
+
+    // Cerrar panel de búsqueda con el botón X
+    document.getElementById('cerrarBuscador').addEventListener('click', cerrarBuscador);
+
+    // Enviar formulario de comida
+    document.getElementById('addFoodForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+
+      try {
+        const response = await fetch('/registrar-comida', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          alert('Comida registrada correctamente');
+          hideAddFoodModal();
+          window.location.reload();
+        } else {
+          alert('Error: ' + result.detail);
+        }
+      } catch (error) {
+        alert('Error al registrar comida');
+      }
+    });
+
+    // Prevenir que el modal se cierre al hacer clic dentro de él
+    document.getElementById('addFoodModal').addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  </script>
+</body>
+</html>

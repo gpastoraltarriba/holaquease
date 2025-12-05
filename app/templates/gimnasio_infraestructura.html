@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Infraestructura - Dashboard Gimnasio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+  /* Reset básico */
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter',sans-serif; }
+  body{ display:flex; min-height:100vh; background:#f4f6fc; }
+
+  /* ============================ */
+  /* Sidebar */
+  /* ============================ */
+  .sidebar{
+    width:220px;
+    background:linear-gradient(to bottom,#667eea,#764ba2);
+    padding:2rem 1rem;
+    color:#fff;
+    flex-shrink:0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar h2{ margin-bottom:2rem; text-align:center; font-size:1.5rem; }
+
+  /* Estilo base para enlaces del sidebar */
+  .sidebar a{
+    display:block;
+    color:#fff;
+    text-decoration:none;
+    margin:1rem 0;
+    padding:.75rem 1rem;
+    border-radius:12px;
+    transition:background .2s ease;
+  }
+  .sidebar a:hover{ background:rgba(255,255,255,.20); }
+
+  /* Ítems horizontales */
+  .sidebar a.sidebar-item{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    margin:.5rem 0;
+    padding:.6rem .9rem;
+    background:transparent;
+  }
+  .sidebar a.sidebar-item:hover{ background:rgba(255,255,255,.18); }
+
+  /* Ítem de perfil */
+  .sidebar a.sidebar-profile-link{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:.45rem 1rem;
+    margin-top:.75rem;
+    border-radius:10px;
+    background:transparent;
+  }
+  .sidebar a.sidebar-profile-link:hover{ background:rgba(255,255,255,.15); }
+
+  /* Avatar del usuario */
+  .sidebar-avatar{
+    width:38px; height:38px;
+    border-radius:50%;
+    object-fit:cover;
+    flex:0 0 38px;
+    border:2px solid rgba(255,255,255,.6);
+    display:block;
+  }
+
+  /* Texto del nombre */
+  .sidebar-label{
+    display:flex;
+    align-items:center;
+    height:38px;
+    line-height:1;
+    font-size:1rem; font-weight:600; color:#fff;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:140px;
+  }
+
+  /* Botón de cerrar sesión */
+  .sidebar-logout {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .sidebar-logout a {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-logout a:hover {
+    background: rgba(231, 76, 60, 0.8);
+    border-color: rgba(231, 76, 60, 0.5);
+  }
+
+  /* ============================ */
+  /* Main */
+  /* ============================ */
+  .main{ flex:1; padding:2rem; overflow-y:auto; }
+
+  /* ============================ */
+  /* Cards y KPIs */
+  /* ============================ */
+  .dashboard{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card{
+    background:#fff; border-radius:20px; padding:1.5rem;
+    box-shadow:0 8px 20px rgba(0,0,0,.05);
+  }
+  .card h3{ margin-bottom:.5rem; color:#333; }
+  .kpi-value{ font-size:1.35rem; font-weight:700; color:#222; }
+  .kpi-sub{ color:#777; font-size:.85rem; margin-top:.15rem; }
+
+  /* ============================ */
+  /* Secciones de contenido */
+  /* ============================ */
+  .section {
+    background: #fff;
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,.05);
+  }
+
+  .section h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Tablas */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e5ee;
+  }
+
+  .table th {
+    background: #f8f9fc;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .table tr:hover {
+    background: #f8f9fc;
+  }
+
+  /* Botones */
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-primary {
+    background: #667eea;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #5a67d8;
+  }
+
+  .btn-success {
+    background: #18a957;
+    color: white;
+  }
+
+  .btn-success:hover {
+    background: #148f4a;
+  }
+
+  .btn-warning {
+    background: #e67e22;
+    color: white;
+  }
+
+  .btn-warning:hover {
+    background: #d35400;
+  }
+
+  .btn-danger {
+    background: #e74c3c;
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: #c0392b;
+  }
+
+  /* Formularios */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e5ee;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* Grid de productos/infraestructura */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .grid-item {
+    background: #f8f9fc;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #e2e5ee;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .grid-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  }
+
+  .grid-item-image {
+    width: 100%;
+    height: 180px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    background-color: #e2e5ee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 0.9rem;
+  }
+
+  .grid-item h4 {
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+
+  .grid-item p {
+    color: #666;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .grid-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .badge-success {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .badge-warning {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid #e2e5ee;
+    margin-bottom: 1.5rem;
+  }
+
+  .tab {
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-weight: 600;
+    color: #666;
+  }
+
+  .tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+  }
+
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  /* Modal */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal.active {
+    display: flex;
+  }
+
+  .modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e2e5ee;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+  }
+
+  /* Mensaje de vacío */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #666;
+  }
+
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .empty-state h4 {
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+
+  .empty-state p {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Subida de imágenes */
+  .image-upload-container {
+    margin-bottom: 1rem;
+  }
+
+  .image-preview {
+    width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  .upload-placeholder {
+    width: 100%;
+    height: 120px;
+    border: 2px dashed #e2e5ee;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .upload-placeholder:hover {
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  .upload-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .image-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Panel Gimnasio</h2>
+
+    <div class="sidebar-nav">
+      <a href="/panel-gimnasio" class="sidebar-item">📊 Dashboard</a>
+      <a href="/panel-gimnasio/infraestructura" class="sidebar-item">🏗️ Infraestructura</a>
+      <a href="/panel-gimnasio/peticiones" class="sidebar-item">📋 Peticiones</a>
+      <a href="/panel-gimnasio/productos" class="sidebar-item">🛍️ Mis Productos</a>
+      <a href="/panel-gimnasio/clientes" class="sidebar-item">👥 Gestión de Clientes</a>
+      <a href="/panel-gimnasio/cobros" class="sidebar-item">💳 Gestión de Cobros</a>
+      <a href="/ajustes" class="sidebar-item">⚙️ Ajustes</a>
+    </div>
+
+    <!-- Bloque de perfil abajo -->
+    <a href="/mi-perfil" class="sidebar-item sidebar-profile-link">
+      <img
+        class="sidebar-avatar"
+        src="{{ request.url_for('static', path='uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png') }}"
+        alt="Foto de tu perfil"
+        onerror="this.src='{{ request.url_for('static', path='uploads/2571eb2a-583a-490b-aa0d-c2ca737e290f.png') }}'"
+      />
+      <span class="sidebar-label">{{ gimnasio.nombre if gimnasio else 'Tu Gimnasio' }}</span>
+    </a>
+
+    <!-- Botón de cerrar sesión -->
+    <div class="sidebar-logout">
+      <a href="/login" class="sidebar-item">
+        🚪 Cerrar Sesión
+      </a>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- Encabezado de la página -->
+    <div class="section">
+      <h1>🏗️ Gestión de Infraestructura</h1>
+      <p>Gestiona las instalaciones y equipamiento de tu gimnasio. Las imágenes ayudarán a la IA a generar rutinas más precisas.</p>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="dashboard">
+      <div class="card">
+        <h3>Equipos Disponibles</h3>
+        <div class="kpi-value">{{ equipos_disponibles|default(0) }}</div>
+        <div class="kpi-sub">De {{ equipos_totales|default(0) }} totales</div>
+      </div>
+
+      <div class="card">
+        <h3>Instalaciones Activas</h3>
+        <div class="kpi-value">{{ instalaciones_activas|default(0) }}</div>
+        <div class="kpi-sub">De {{ instalaciones_totales|default(0) }} totales</div>
+      </div>
+
+      <div class="card">
+        <h3>Equipos en Mantenimiento</h3>
+        <div class="kpi-value">{{ equipos_mantenimiento|default(0) }}</div>
+        <div class="kpi-sub">Necesitan atención</div>
+      </div>
+
+      <div class="card">
+        <h3>Elementos con Imágenes</h3>
+        <div class="kpi-value">{{ elementos_con_imagen|default(0) }}</div>
+        <div class="kpi-sub">Para mejoras de IA</div>
+      </div>
+    </div>
+
+    <!-- Tabs para diferentes secciones -->
+    <div class="section">
+      <div class="tabs">
+        <div class="tab active" data-tab="equipos">Equipamiento</div>
+        <div class="tab" data-tab="instalaciones">Instalaciones</div>
+        <div class="tab" data-tab="mantenimiento">Mantenimiento</div>
+      </div>
+
+      <!-- Contenido de Equipamiento -->
+      <div class="tab-content active" id="equipos">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3>Equipamiento del Gimnasio</h3>
+          <button class="btn btn-primary" onclick="openAddModal('equipo')">
+            ➕ Agregar Equipo
+          </button>
+        </div>
+
+        <div class="grid">
+          {% if equipos and equipos|length > 0 %}
+            {% for equipo in equipos %}
+            <div class="grid-item">
+              <div class="grid-item-image">
+                {% if equipo.imagen_url %}
+                <img src="{{ request.url_for('static', path=equipo.imagen_url) }}"
+                     alt="{{ equipo.nombre }}"
+                     style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                {% else %}
+                <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                  📷 Sin imagen
+                </div>
+                {% endif %}
+              </div>
+              <h4>{{ equipo.nombre }}</h4>
+              <p><strong>Tipo:</strong> {{ equipo.tipo }}</p>
+              <p><strong>Estado:</strong>
+                <span class="badge badge-{{ 'success' if equipo.estado == 'disponible' else 'warning' if equipo.estado == 'mantenimiento' else 'danger' }}">
+                  {{ equipo.estado }}
+                </span>
+              </p>
+              <p><strong>Última revisión:</strong> {{ equipo.ultima_revision }}</p>
+              <p><strong>Próxima revisión:</strong> {{ equipo.proxima_revision }}</p>
+              <div class="grid-item-actions">
+                <button class="btn btn-warning" onclick="editItem('equipo', {{ equipo.id }})">✏️ Editar</button>
+                <button class="btn btn-danger" onclick="deleteItem('equipo', {{ equipo.id }})">🗑️ Eliminar</button>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">
+              <div class="empty-state-icon">💪</div>
+              <h4>No hay equipos registrados</h4>
+              <p>Comienza agregando el primer equipo a tu gimnasio</p>
+              <button class="btn btn-primary" onclick="openAddModal('equipo')">
+                ➕ Agregar Primer Equipo
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Contenido de Instalaciones -->
+      <div class="tab-content" id="instalaciones">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3>Instalaciones del Gimnasio</h3>
+          <button class="btn btn-primary" onclick="openAddModal('instalacion')">
+            ➕ Agregar Instalación
+          </button>
+        </div>
+
+        <div class="grid">
+          {% if instalaciones and instalaciones|length > 0 %}
+            {% for instalacion in instalaciones %}
+            <div class="grid-item">
+              <div class="grid-item-image">
+                {% if instalacion.imagen_url %}
+                <img src="{{ request.url_for('static', path=instalacion.imagen_url) }}"
+                     alt="{{ instalacion.nombre }}"
+                     style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                {% else %}
+                <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                  🏠 Sin imagen
+                </div>
+                {% endif %}
+              </div>
+              <h4>{{ instalacion.nombre }}</h4>
+              <p><strong>Capacidad:</strong> {{ instalacion.capacidad }} personas</p>
+              <p><strong>Estado:</strong>
+                <span class="badge badge-{{ 'success' if instalacion.estado == 'disponible' else 'info' if instalacion.estado == 'reservado' else 'warning' }}">
+                  {{ instalacion.estado }}
+                </span>
+              </p>
+              <p><strong>Horario:</strong> {{ instalacion.horario }}</p>
+              <div class="grid-item-actions">
+                <button class="btn btn-warning" onclick="editItem('instalacion', {{ instalacion.id }})">✏️ Editar</button>
+                <button class="btn btn-danger" onclick="deleteItem('instalacion', {{ instalacion.id }})">🗑️ Eliminar</button>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">
+              <div class="empty-state-icon">🏠</div>
+              <h4>No hay instalaciones registradas</h4>
+              <p>Comienza agregando la primera instalación de tu gimnasio</p>
+              <button class="btn btn-primary" onclick="openAddModal('instalacion')">
+                ➕ Agregar Primera Instalación
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Contenido de Mantenimiento -->
+      <div class="tab-content" id="mantenimiento">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3>Programación de Mantenimiento</h3>
+          <button class="btn btn-primary" onclick="openAddModal('mantenimiento')">
+            ➕ Agendar Mantenimiento
+          </button>
+        </div>
+
+        {% if mantenimientos and mantenimientos|length > 0 %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Equipo/Instalación</th>
+              <th>Tipo</th>
+              <th>Última Revisión</th>
+              <th>Próxima Revisión</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mantenimiento in mantenimientos %}
+            <tr>
+              <td>{{ mantenimiento.nombre }}</td>
+              <td>{{ mantenimiento.tipo }}</td>
+              <td>{{ mantenimiento.ultima_revision }}</td>
+              <td>{{ mantenimiento.proxima_revision }}</td>
+              <td>
+                <span class="badge badge-{{ 'success' if mantenimiento.estado == 'al dia' else 'warning' if mantenimiento.estado == 'pendiente' else 'danger' }}">
+                  {{ mantenimiento.estado }}
+                </span>
+              </td>
+              <td>
+                <button class="btn btn-primary">📅 Reprogramar</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">🔧</div>
+          <h4>No hay mantenimientos programados</h4>
+          <p>Agenda el primer mantenimiento para tus equipos o instalaciones</p>
+          <button class="btn btn-primary" onclick="openAddModal('mantenimiento')">
+            ➕ Agendar Primer Mantenimiento
+          </button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para agregar/editar elementos -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Agregar Nuevo Elemento</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="infraestructuraForm" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="nombre">Nombre</label>
+          <input type="text" id="nombre" name="nombre" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select id="tipo" name="tipo" required>
+              <option value="">Selecciona un tipo</option>
+              <option value="cardio">Cardio</option>
+              <option value="fuerza">Fuerza</option>
+              <option value="sala">Sala</option>
+              <option value="estudio">Estudio</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="estado">Estado</label>
+            <select id="estado" name="estado" required>
+              <option value="">Selecciona un estado</option>
+              <option value="disponible">Disponible</option>
+              <option value="mantenimiento">En Mantenimiento</option>
+              <option value="reservado">Reservado</option>
+              <option value="no-disponible">No Disponible</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" name="descripcion" rows="3" placeholder="Describe el equipo o instalación..."></textarea>
+        </div>
+
+        <!-- Campo para subir imagen -->
+        <div class="form-group image-upload-container">
+          <label for="imagen">Imagen</label>
+          <div class="upload-placeholder" onclick="document.getElementById('imagen').click()">
+            <div>📷</div>
+            <div>Haz clic para subir una imagen</div>
+            <small>Recomendado para mejoras de IA</small>
+          </div>
+          <input type="file" id="imagen" name="imagen" accept="image/*" style="display: none;" onchange="previewImage(this)">
+          <img id="imagePreview" class="image-preview" src="" alt="Vista previa">
+          <div class="image-actions" id="imageActions" style="display: none;">
+            <button type="button" class="btn btn-warning" onclick="document.getElementById('imagen').click()">Cambiar imagen</button>
+            <button type="button" class="btn btn-danger" onclick="removeImage()">Eliminar imagen</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="ultimaRevision">Última Revisión</label>
+            <input type="date" id="ultimaRevision" name="ultimaRevision">
+          </div>
+
+          <div class="form-group">
+            <label for="proximaRevision">Próxima Revisión</label>
+            <input type="date" id="proximaRevision" name="proximaRevision">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="capacidad">Capacidad (personas)</label>
+          <input type="number" id="capacidad" name="capacidad" min="1" placeholder="Solo para instalaciones">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+          <button type="button" class="btn" onclick="closeModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Funcionalidad de tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remover clase active de todos los tabs y contenidos
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        // Añadir clase active al tab clickeado
+        tab.classList.add('active');
+
+        // Mostrar el contenido correspondiente
+        const tabId = tab.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+
+    // Vista previa de imagen
+    function previewImage(input) {
+      const preview = document.getElementById('imagePreview');
+      const actions = document.getElementById('imageActions');
+      const placeholder = document.querySelector('.upload-placeholder');
+
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+          actions.style.display = 'flex';
+          placeholder.style.display = 'none';
+        }
+
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    // Eliminar imagen
+    function removeImage() {
+      const input = document.getElementById('imagen');
+      const preview = document.getElementById('imagePreview');
+      const actions = document.getElementById('imageActions');
+      const placeholder = document.querySelector('.upload-placeholder');
+
+      input.value = '';
+      preview.src = '';
+      preview.style.display = 'none';
+      actions.style.display = 'none';
+      placeholder.style.display = 'flex';
+    }
+
+    // Funciones para el modal
+    function openAddModal(type) {
+      const modal = document.getElementById('addModal');
+      const title = document.getElementById('modalTitle');
+      const capacidadField = document.getElementById('capacidad').closest('.form-group');
+
+      if (type === 'equipo') {
+        title.textContent = 'Agregar Nuevo Equipo';
+        capacidadField.style.display = 'none';
+      } else if (type === 'instalacion') {
+        title.textContent = 'Agregar Nueva Instalación';
+        capacidadField.style.display = 'block';
+      } else {
+        title.textContent = 'Agendar Mantenimiento';
+        capacidadField.style.display = 'none';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('addModal').classList.remove('active');
+      document.getElementById('infraestructuraForm').reset();
+      removeImage();
+    }
+
+    function editItem(type, id) {
+      const modal = document.getElementById('addModal');
+      const title = document.getElementById('modalTitle');
+      const capacidadField = document.getElementById('capacidad').closest('.form-group');
+
+      if (type === 'equipo') {
+        title.textContent = 'Editar Equipo';
+        capacidadField.style.display = 'none';
+      } else if (type === 'instalacion') {
+        title.textContent = 'Editar Instalación';
+        capacidadField.style.display = 'block';
+      } else {
+        title.textContent = 'Editar Mantenimiento';
+        capacidadField.style.display = 'none';
+      }
+
+      // Aquí se cargarían los datos del elemento a editar
+      // Por ahora, solo abrimos el modal
+      modal.classList.add('active');
+    }
+
+    function deleteItem(type, id) {
+      if (confirm('¿Estás seguro de que quieres eliminar este elemento?')) {
+        // Aquí iría la lógica para eliminar el elemento
+        alert('Elemento eliminado correctamente');
+      }
+    }
+
+    // Manejo del formulario
+    document.getElementById('infraestructuraForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      // Aquí iría la lógica para guardar los datos
+      alert('Elemento guardado correctamente');
+      closeModal();
+    });
+
+    // Cerrar modal al hacer clic fuera del contenido
+    document.getElementById('addModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
